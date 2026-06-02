@@ -227,6 +227,12 @@ pub fn get_settings(app: tauri::AppHandle) -> CmdResult<Settings> {
     Ok(settings::load(&config_path(&app)?))
 }
 
+/// Absolute path to `config.toml` (so the frontend can open it in an editor).
+#[tauri::command]
+pub fn config_file_path(app: tauri::AppHandle) -> CmdResult<String> {
+    Ok(config_path(&app)?.to_string_lossy().into_owned())
+}
+
 /// Persist the full settings struct to `config.toml` (atomically). This is the
 /// single source of truth for both backend behavior and the frontend's overlay.
 #[tauri::command]

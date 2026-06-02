@@ -2,6 +2,7 @@
 // persists every change. Frontend behaviors (sort defaults, confirm prompts,
 // video preview) read from here; the collision policy is pushed to the backend.
 import { api, DEFAULT_SETTINGS, type Settings } from "./api";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 class SettingsStore {
   collisionPolicy = $state(DEFAULT_SETTINGS.collisionPolicy);
@@ -14,6 +15,8 @@ class SettingsStore {
   videoLoop = $state(DEFAULT_SETTINGS.videoLoop);
   videoMuted = $state(DEFAULT_SETTINGS.videoMuted);
   theme = $state(DEFAULT_SETTINGS.theme);
+  defaultInput = $state(DEFAULT_SETTINGS.defaultInput);
+  defaultOutput = $state(DEFAULT_SETTINGS.defaultOutput);
 
   /** Overlay visibility. */
   open = $state(false);
@@ -31,6 +34,8 @@ class SettingsStore {
       videoLoop: this.videoLoop,
       videoMuted: this.videoMuted,
       theme: this.theme,
+      defaultInput: this.defaultInput,
+      defaultOutput: this.defaultOutput,
     };
   }
   private apply(s: Settings) {
@@ -44,6 +49,8 @@ class SettingsStore {
     this.videoLoop = s.videoLoop;
     this.videoMuted = s.videoMuted;
     this.theme = s.theme;
+    this.defaultInput = s.defaultInput;
+    this.defaultOutput = s.defaultOutput;
   }
 
   /** Load config.toml once at startup. */
@@ -65,6 +72,27 @@ class SettingsStore {
       if (key === "collisionPolicy") await api.setCollisionPolicy(this.collisionPolicy);
     } catch {
       // best-effort persistence
+    }
+  }
+
+  /** Pick a default inbox/destination folder and persist it. */
+  async pickDefault(which: "input" | "output") {
+    const dir = await api.pickDirectory(
+      which === "input" ? "Default inbox folder" : "Default destination root",
+    );
+    if (dir) await this.set(which === "input" ? "defaultInput" : "defaultOutput", dir);
+  }
+  async clearDefault(which: "input" | "output") {
+    await this.set(which === "input" ? "defaultInput" : "defaultOutput", "");
+  }
+
+  /** Open config.toml in the OS default editor (ensures the file exists first). */
+  async openConfigFile() {
+    try {
+      await api.setSettings(this.snapshot()); // write the file if it doesn't exist yet
+      await openPath(await api.configFilePath());
+    } catch {
+      /* ignore */
     }
   }
 

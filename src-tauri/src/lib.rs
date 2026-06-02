@@ -26,6 +26,7 @@ pub fn run() {
             commands::would_cross_volume,
             commands::disk_space,
             commands::get_settings,
+            commands::config_file_path,
             commands::set_settings,
             commands::set_collision_policy,
         ])

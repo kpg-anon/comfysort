@@ -102,6 +102,7 @@ export const api = {
   rescanInbox: (): Promise<MediaItem[]> => invoke("rescan_inbox", {}),
 
   getSettings: (): Promise<Settings> => invoke("get_settings", {}),
+  configFilePath: (): Promise<string> => invoke("config_file_path", {}),
   setSettings: (settings: Settings): Promise<void> => invoke("set_settings", { settings }),
   setCollisionPolicy: (policy: string): Promise<void> =>
     invoke("set_collision_policy", { policy }),
@@ -125,6 +126,8 @@ export interface Settings {
   videoLoop: boolean;
   videoMuted: boolean;
   theme: string;
+  defaultInput: string;
+  defaultOutput: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -138,6 +141,8 @@ export const DEFAULT_SETTINGS: Settings = {
   videoLoop: true,
   videoMuted: true,
   theme: "comfy-dark",
+  defaultInput: "",
+  defaultOutput: "",
 };
 
 /** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */

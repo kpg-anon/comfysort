@@ -20,6 +20,17 @@
   $effect(() => {
     if (!settings.loaded) settings.load();
   });
+  // If the user configured default folders, open straight into them (skip the
+  // start screen). Runs once, after settings load.
+  let autoOpened = false;
+  $effect(() => {
+    if (settings.loaded && !autoOpened) {
+      autoOpened = true;
+      if (!session.input && settings.defaultInput && settings.defaultOutput) {
+        session.open(settings.defaultInput, settings.defaultOutput);
+      }
+    }
+  });
   // Apply the active theme preset to the document (re-themes all tokens).
   $effect(() => {
     document.documentElement.dataset.theme = settings.theme;

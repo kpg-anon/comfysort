@@ -38,6 +38,23 @@
   </div>
 {/snippet}
 
+{#snippet pathRow(name: string, desc: string, value: string, which: "input" | "output")}
+  <div class="row">
+    <div class="meta">
+      <div class="name">{name}</div>
+      <div class="desc">{desc}</div>
+    </div>
+    <div class="pathctl">
+      <button class="pathbtn" class:set={!!value} title={value || "Not set"} onclick={() => settings.pickDefault(which)}>
+        {value || "Choose folder…"}
+      </button>
+      {#if value}
+        <button class="pathx nf" title="Clear" onclick={() => settings.clearDefault(which)}>{I.close}</button>
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
 {#if settings.open}
   <div class="scrim" onclick={backdrop} role="presentation">
     <div class="panel">
@@ -64,6 +81,13 @@
               </button>
             {/each}
           </div>
+        </section>
+
+        <section>
+          <h3>Startup</h3>
+          <p class="note">When both default folders are set, the app opens straight into them and skips the start screen.</p>
+          {@render pathRow("Default inbox", "Folder of media to sort on launch.", settings.defaultInput, "input")}
+          {@render pathRow("Default destination", "Root whose child folders become sort targets.", settings.defaultOutput, "output")}
         </section>
 
         <section>
@@ -108,7 +132,12 @@
         </section>
       </div>
 
-      <footer>Saved automatically to <code>config.toml</code> in your app config folder.</footer>
+      <footer>
+        <span>Saved automatically to <code>config.toml</code>.</span>
+        <button class="openconf" onclick={() => settings.openConfigFile()} title="Open config.toml in your editor">
+          <span class="nf">{I.eye}</span> Open config.toml
+        </button>
+      </footer>
     </div>
   </div>
 {/if}
@@ -154,7 +183,9 @@
     display: grid; place-items: center; font-size: 12px;
   }
   .x:hover { color: var(--red); border-color: var(--red); }
-  .body { overflow-y: auto; padding: 6px 18px 14px; }
+  /* overflow-x hidden + overscroll-contain stops trackpad horizontal scroll /
+     rubber-banding past the panel bounds. */
+  .body { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 6px 18px 14px; }
   section { padding: 12px 0; border-bottom: 1px solid var(--border-muted); }
   section:last-child { border-bottom: none; }
   h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--purple); }
@@ -185,8 +216,34 @@
   .switch.on { background: color-mix(in srgb, var(--green) 30%, var(--bg-chip)); border-color: var(--green); }
   .switch.on .knob { left: 20px; background: var(--green); }
   footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 10px 18px; border-top: 1px solid var(--border-muted);
     color: var(--text-muted); font-size: 11px;
   }
   footer code { font-family: var(--mono); color: var(--text-secondary); }
+  .openconf {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-secondary);
+    border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  .openconf:hover { border-color: var(--purple); color: var(--text-primary); }
+  .openconf .nf { color: var(--cyan); font-size: 12px; }
+
+  /* default-folder picker rows */
+  .pathctl { display: flex; align-items: center; gap: 6px; flex: none; max-width: 230px; }
+  .pathbtn {
+    min-width: 150px; max-width: 200px;
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-muted);
+    border-radius: var(--radius-sm); padding: 5px 9px; cursor: pointer;
+    font-family: var(--mono); font-size: 11.5px; text-align: left;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .pathbtn.set { color: var(--text-primary); }
+  .pathbtn:hover { border-color: var(--purple); }
+  .pathx {
+    flex: none; border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-muted);
+    border-radius: var(--radius-sm); width: 26px; height: 26px; cursor: pointer;
+    display: grid; place-items: center; font-size: 11px;
+  }
+  .pathx:hover { color: var(--red); border-color: var(--red); }
 </style>

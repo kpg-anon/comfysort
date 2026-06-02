@@ -34,6 +34,12 @@ pub struct Settings {
     pub video_muted: bool,
     #[serde(default = "default_theme")]
     pub theme: String,
+    /// Optional default inbox/destination. When both are set, the app opens
+    /// straight into them and skips the start screen. Empty = unset.
+    #[serde(default)]
+    pub default_input: String,
+    #[serde(default)]
+    pub default_output: String,
 }
 
 fn default_collision_policy() -> CollisionPolicy {
@@ -68,6 +74,8 @@ impl Default for Settings {
             video_loop: true,
             video_muted: true,
             theme: default_theme(),
+            default_input: String::new(),
+            default_output: String::new(),
         }
     }
 }
@@ -131,6 +139,8 @@ mod tests {
             video_loop: false,
             video_muted: false,
             theme: "nord".to_owned(),
+            default_input: "C:/in".to_owned(),
+            default_output: "C:/out".to_owned(),
         };
         save(&path, &settings).unwrap();
         assert!(path.exists(), "config.toml written");
