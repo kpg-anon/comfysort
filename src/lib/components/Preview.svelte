@@ -85,7 +85,7 @@
     justify-content: center;
     padding: 16px;
     background:
-      radial-gradient(circle at 50% 40%, #161b22 0%, var(--bg-app) 80%);
+      radial-gradient(circle at 50% 40%, var(--bg-panel-alt) 0%, var(--bg-app) 80%);
   }
   img, video {
     max-width: 100%;

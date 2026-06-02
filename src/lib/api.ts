@@ -122,6 +122,7 @@ export interface Settings {
   videoAutoplay: boolean;
   videoLoop: boolean;
   videoMuted: boolean;
+  theme: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -134,6 +135,7 @@ export const DEFAULT_SETTINGS: Settings = {
   videoAutoplay: true,
   videoLoop: true,
   videoMuted: true,
+  theme: "comfy-dark",
 };
 
 /** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */

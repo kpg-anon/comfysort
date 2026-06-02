@@ -18,6 +18,10 @@
   $effect(() => {
     if (!settings.loaded) settings.load();
   });
+  // Apply the active theme preset to the document (re-themes all tokens).
+  $effect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+  });
 
   // Resolve a layout-stable hotkey slot from a KeyboardEvent.code.
   function slotFromCode(code: string): string | null {

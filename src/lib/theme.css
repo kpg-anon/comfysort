@@ -36,6 +36,76 @@
   color-scheme: dark;
 }
 
+/* ── Theme presets ──────────────────────────────────────────────────────────
+   comfy-dark is the :root default above. Each preset remaps the same token set
+   so every component re-themes automatically. Applied via data-theme on <html>
+   (see settings store). Accent roles are kept semantic: green=positive/move,
+   red=destructive, purple=active/highlight, cyan=copy, yellow=view, blue=nav,
+   orange=undo/caution. */
+[data-theme="nord"] {
+  --bg-app: #2e3440;
+  --bg-panel: #323947;
+  --bg-panel-alt: #3b4252;
+  --bg-selected: #3b4a3e;
+  --bg-selected-active: #403a4d;
+  --bg-chip: #3b4252;
+  --border: #434c5e;
+  --border-muted: #3b4252;
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #8893a8;
+  --text-inverse: #2e3440;
+  --green: #a3be8c;
+  --cyan: #88c0d0;
+  --blue: #81a1c1;
+  --purple: #b48ead;
+  --yellow: #ebcb8b;
+  --orange: #d08770;
+  --red: #bf616a;
+}
+[data-theme="gruvbox"] {
+  --bg-app: #1d2021;
+  --bg-panel: #282828;
+  --bg-panel-alt: #32302f;
+  --bg-selected: #3c3a28;
+  --bg-selected-active: #3a2f33;
+  --bg-chip: #3c3836;
+  --border: #504945;
+  --border-muted: #3c3836;
+  --text-primary: #ebdbb2;
+  --text-secondary: #d5c4a1;
+  --text-muted: #a89984;
+  --text-inverse: #1d2021;
+  --green: #b8bb26;
+  --cyan: #8ec07c;
+  --blue: #83a598;
+  --purple: #d3869b;
+  --yellow: #fabd2f;
+  --orange: #fe8019;
+  --red: #fb4934;
+}
+[data-theme="catppuccin"] {
+  --bg-app: #1e1e2e;
+  --bg-panel: #242438;
+  --bg-panel-alt: #2b2b40;
+  --bg-selected: #2c3a30;
+  --bg-selected-active: #332b44;
+  --bg-chip: #313244;
+  --border: #45475a;
+  --border-muted: #313244;
+  --text-primary: #cdd6f4;
+  --text-secondary: #bac2de;
+  --text-muted: #7f849c;
+  --text-inverse: #1e1e2e;
+  --green: #a6e3a1;
+  --cyan: #94e2d5;
+  --blue: #89b4fa;
+  --purple: #cba6f7;
+  --yellow: #f9e2af;
+  --orange: #fab387;
+  --red: #f38ba8;
+}
+
 /* Nerd Font icon glyphs (bundled symbols-only font). Use via the `.nf` class
    with codepoints from src/lib/icons.ts. */
 @font-face {

@@ -53,7 +53,7 @@
     display: grid;
     place-items: center;
     background:
-      radial-gradient(circle at 50% 30%, #161b22 0%, var(--bg-app) 70%);
+      radial-gradient(circle at 50% 30%, var(--bg-panel-alt) 0%, var(--bg-app) 70%);
   }
   .card {
     width: 460px;

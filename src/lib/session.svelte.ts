@@ -245,7 +245,10 @@ class SessionStore {
       this.fetchDisk();
       this.setStatus(`${view.inbox.length} items to sort`, "info");
     } catch (e) {
+      // Shown on the start screen, and as a status if we're already in a session
+      // (e.g. a re-picked folder that no longer exists).
       this.error = String(e);
+      this.setStatus(`Couldn't open folder: ${e}`, "bad");
     } finally {
       this.busy = false;
     }

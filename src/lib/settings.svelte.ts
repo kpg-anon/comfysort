@@ -13,6 +13,7 @@ class SettingsStore {
   videoAutoplay = $state(DEFAULT_SETTINGS.videoAutoplay);
   videoLoop = $state(DEFAULT_SETTINGS.videoLoop);
   videoMuted = $state(DEFAULT_SETTINGS.videoMuted);
+  theme = $state(DEFAULT_SETTINGS.theme);
 
   /** Overlay visibility. */
   open = $state(false);
@@ -29,6 +30,7 @@ class SettingsStore {
       videoAutoplay: this.videoAutoplay,
       videoLoop: this.videoLoop,
       videoMuted: this.videoMuted,
+      theme: this.theme,
     };
   }
   private apply(s: Settings) {
@@ -41,6 +43,7 @@ class SettingsStore {
     this.videoAutoplay = s.videoAutoplay;
     this.videoLoop = s.videoLoop;
     this.videoMuted = s.videoMuted;
+    this.theme = s.theme;
   }
 
   /** Load config.toml once at startup. */

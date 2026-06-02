@@ -32,10 +32,15 @@ pub struct Settings {
     pub video_loop: bool,
     #[serde(default = "default_true")]
     pub video_muted: bool,
+    #[serde(default = "default_theme")]
+    pub theme: String,
 }
 
 fn default_collision_policy() -> CollisionPolicy {
     CollisionPolicy::Rename
+}
+fn default_theme() -> String {
+    "comfy-dark".to_owned()
 }
 fn default_true() -> bool {
     true
@@ -62,6 +67,7 @@ impl Default for Settings {
             video_autoplay: true,
             video_loop: true,
             video_muted: true,
+            theme: default_theme(),
         }
     }
 }
@@ -124,6 +130,7 @@ mod tests {
             video_autoplay: false,
             video_loop: false,
             video_muted: false,
+            theme: "nord".to_owned(),
         };
         save(&path, &settings).unwrap();
         assert!(path.exists(), "config.toml written");

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
+  import { THEMES } from "$lib/themes";
   import type { Settings } from "$lib/api";
 
   function backdrop(e: MouseEvent) {
@@ -47,6 +48,24 @@
       </header>
 
       <div class="body">
+        <section>
+          <h3>Appearance</h3>
+          <div class="themes">
+            {#each THEMES as t (t.id)}
+              <button
+                class="theme"
+                class:active={settings.theme === t.id}
+                onclick={() => settings.set("theme", t.id)}
+              >
+                <span class="swatches">
+                  {#each t.swatches as c}<span class="sw" style="background:{c}"></span>{/each}
+                </span>
+                <span class="tname">{t.name}</span>
+              </button>
+            {/each}
+          </div>
+        </section>
+
         <section>
           <h3>Behavior</h3>
           {@render selectRow(
@@ -99,13 +118,30 @@
     position: fixed; inset: 0; z-index: 60;
     background: rgba(8, 10, 13, 0.62);
     display: grid; place-items: center;
+    animation: fade 0.12s ease-out;
   }
   .panel {
     width: 540px; max-height: 86vh; display: flex; flex-direction: column;
     background: var(--bg-panel); border: 1px solid var(--border);
     border-radius: 12px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
     overflow: hidden;
+    animation: pop 0.13s ease-out;
   }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+
+  .themes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--bg-chip);
+    color: var(--text-secondary); cursor: pointer; text-align: left;
+  }
+  .theme:hover { border-color: var(--text-muted); }
+  .theme.active { border-color: var(--purple); color: var(--text-primary); }
+  .swatches { display: inline-flex; flex: none; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .swatches .sw { width: 13px; height: 22px; }
+  .tname { font-size: 12.5px; }
   header {
     display: flex; align-items: center; gap: 10px;
     padding: 14px 18px; border-bottom: 1px solid var(--border-muted);
