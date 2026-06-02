@@ -15,8 +15,10 @@ use std::path::{Path, PathBuf};
 pub enum OperationKind {
     Move,
     Copy,
+    DeleteFolder,
     UndoMove,
     UndoCopy,
+    UndoDeleteFolder,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +104,41 @@ impl OperationEngine {
         Ok(resolved)
     }
 
+    /// Move a folder into `trash_dir`, journaled and undoable. A plain
+    /// filesystem rename so undo can rename it straight back; collisions inside
+    /// trash get the Windows-Explorer suffix treatment. Returns the resolved
+    /// destination inside trash.
+    pub fn delete_folder(
+        &mut self,
+        source: &Path,
+        trash_dir: &Path,
+    ) -> anyhow::Result<PathBuf> {
+        let file_name = source
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("source path has no file name"))?;
+        fs::create_dir_all(trash_dir)?;
+        let resolved = resolve_collision(trash_dir.join(file_name), CollisionPolicy::Rename)?;
+        self.record(
+            OperationKind::DeleteFolder,
+            OperationStatus::Intent,
+            source,
+            &resolved,
+        );
+        fs::rename(source, &resolved)?;
+        self.record(
+            OperationKind::DeleteFolder,
+            OperationStatus::Succeeded,
+            source,
+            &resolved,
+        );
+        self.completed.push(CompletedOp {
+            kind: OperationKind::DeleteFolder,
+            source_path: source.to_path_buf(),
+            resolved_path: resolved.clone(),
+        });
+        Ok(resolved)
+    }
+
     /// Reverse the most recent completed operation. Returns the completed op so
     /// the caller can decide how to update the inbox (a reversed move/trash
     /// restores a file to its source; a reversed copy removes the duplicate).
@@ -132,7 +169,23 @@ impl OperationEngine {
                     &last.resolved_path,
                 );
             }
-            OperationKind::UndoMove | OperationKind::UndoCopy => {
+            OperationKind::DeleteFolder => {
+                if last.source_path.exists() {
+                    anyhow::bail!(
+                        "cannot undo delete: the original folder path already exists"
+                    );
+                }
+                fs::rename(&last.resolved_path, &last.source_path)?;
+                self.record(
+                    OperationKind::UndoDeleteFolder,
+                    OperationStatus::Succeeded,
+                    &last.resolved_path,
+                    &last.source_path,
+                );
+            }
+            OperationKind::UndoMove
+            | OperationKind::UndoCopy
+            | OperationKind::UndoDeleteFolder => {
                 anyhow::bail!("undo records are not themselves undoable");
             }
         }
@@ -301,6 +354,31 @@ mod tests {
         engine.undo_last().unwrap();
         assert!(src.exists());
         assert!(!resolved.exists());
+    }
+
+    #[test]
+    fn delete_folder_moves_into_trash_and_undo_restores_it() {
+        let dir = tempdir().unwrap();
+        let group = dir.path().join("group");
+        let stray = group.join("stray");
+        let trash = dir.path().join(".trash");
+        fs::create_dir_all(&stray).unwrap();
+        fs::write(stray.join("child.txt"), b"contents").unwrap();
+
+        let mut engine = OperationEngine::new(dir.path().join("j.jsonl"));
+        let resolved = engine.delete_folder(&stray, &trash).unwrap();
+
+        assert!(!stray.exists(), "original folder must be gone");
+        assert!(resolved.exists(), "trashed copy must exist");
+        assert!(
+            resolved.join("child.txt").exists(),
+            "nested contents follow the rename"
+        );
+
+        engine.undo_last().unwrap();
+        assert!(stray.exists(), "undo restores the folder");
+        assert!(stray.join("child.txt").exists());
+        assert!(!resolved.exists(), "trash slot is cleared");
     }
 
     #[test]

@@ -80,6 +80,12 @@ export const api = {
 
   listFolders: (path: string): Promise<FolderListing> =>
     invoke("list_folders", { path }),
+
+  deleteFolder: (path: string): Promise<OpOutcome> =>
+    invoke("delete_folder", { path }),
+
+  searchFolders: (query: string): Promise<FolderEntry[]> =>
+    invoke("search_folders", { query }),
 };
 
 /** Human-readable byte size, e.g. 1.4 MB. */

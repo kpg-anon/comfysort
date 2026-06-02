@@ -2,7 +2,9 @@
 //! Each command locks the managed session, delegates to the engine, and maps
 //! `anyhow` errors to strings the frontend can display.
 
-use comfysort_engine::domain::{DestinationDto, FolderListing, OpOutcome, SessionView};
+use comfysort_engine::domain::{
+    DestinationDto, FolderEntry, FolderListing, OpOutcome, SessionView,
+};
 use comfysort_engine::session::Session;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -117,4 +119,17 @@ pub fn undo(state: State<'_, AppState>) -> CmdResult<OpOutcome> {
 #[tauri::command]
 pub fn list_folders(state: State<'_, AppState>, path: String) -> CmdResult<FolderListing> {
     with_session(&state, |s| s.list_folders(&PathBuf::from(&path)))
+}
+
+#[tauri::command]
+pub fn delete_folder(state: State<'_, AppState>, path: String) -> CmdResult<OpOutcome> {
+    with_session(&state, |s| s.delete_folder(&PathBuf::from(&path)))
+}
+
+#[tauri::command]
+pub fn search_folders(
+    state: State<'_, AppState>,
+    query: String,
+) -> CmdResult<Vec<FolderEntry>> {
+    with_session(&state, |s| Ok(s.search_folders(&query)))
 }

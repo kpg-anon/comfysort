@@ -7,6 +7,8 @@
 
 pub mod destinations;
 pub mod domain;
+pub mod logging;
 pub mod media;
 pub mod operations;
+pub mod search;
 pub mod session;

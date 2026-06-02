@@ -18,6 +18,8 @@ pub fn run() {
             commands::create_folder,
             commands::undo,
             commands::list_folders,
+            commands::delete_folder,
+            commands::search_folders,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

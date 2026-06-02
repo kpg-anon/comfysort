@@ -1,12 +1,29 @@
 <script lang="ts">
-  const chips: [string, string][] = [
-    ["↑↓ / j k", "navigate"],
+  import { session } from "$lib/session.svelte";
+
+  const inboxChips: [string, string][] = [
+    ["tab", "navigator"],
+    ["↑↓ jk", "select"],
     ["1-9", "move"],
     ["0", "trash"],
     ["⇧1-9", "copy"],
-    ["click", "move to target"],
+    ["s", "sort"],
+    ["f", "filter"],
+    ["^r", "order"],
     ["u", "undo"],
   ];
+  const navChips: [string, string][] = [
+    ["tab", "inbox"],
+    ["↑↓ jk", "move"],
+    ["→ ←", "drill"],
+    ["⏎", "move here"],
+    ["⇧d", "copy here"],
+    ["^d", "delete"],
+    ["＋", "new"],
+    ["esc", "back"],
+    ["u", "undo"],
+  ];
+  const chips = $derived(session.focus === "navigator" ? navChips : inboxChips);
 </script>
 
 <footer>

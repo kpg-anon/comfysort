@@ -14,13 +14,21 @@
 
   const DIGITS = new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
 
+  // Keyboard-first: every action has a key. Hotkeys (digits) and undo are global
+  // across panes; navigation keys route by which pane has focus.
   function onKey(e: KeyboardEvent) {
     if (!open) return;
-    // Don't hijack typing in inputs.
     const t = e.target as HTMLElement;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
 
-    // Digit slots: event.code is layout-stable (Shift+1 != "!").
+    // --- Global: focus switching ---
+    if (e.key === "Tab") {
+      e.preventDefault();
+      session.toggleFocus();
+      return;
+    }
+
+    // --- Global: digit hotkey slots (event.code is layout-stable) ---
     const m = e.code.match(/^Digit([0-9])$/);
     if (m) {
       const d = m[1];
@@ -34,20 +42,90 @@
       return;
     }
 
-    switch (e.key.toLowerCase()) {
-      case "arrowdown":
+    // --- Global: undo ---
+    if (e.key === "u" || e.key === "U") {
+      e.preventDefault();
+      session.undo();
+      return;
+    }
+
+    // --- Pane-routed navigation ---
+    if (session.focus === "navigator") {
+      navigatorKey(e);
+    } else {
+      inboxKey(e);
+    }
+  }
+
+  function inboxKey(e: KeyboardEvent) {
+    switch (e.key) {
+      case "ArrowDown":
       case "j":
         e.preventDefault();
         session.next();
         break;
-      case "arrowup":
+      case "ArrowUp":
       case "k":
         e.preventDefault();
-        session.prev();
+        if (e.altKey) session.top();
+        else session.prev();
         break;
-      case "u":
+      case "s":
         e.preventDefault();
-        session.undo();
+        session.cycleSortField();
+        break;
+      case "f":
+        e.preventDefault();
+        session.cycleFilter();
+        break;
+      case "r":
+        if (e.ctrlKey) {
+          e.preventDefault();
+          session.toggleSortOrder();
+        }
+        break;
+    }
+  }
+
+  function navigatorKey(e: KeyboardEvent) {
+    switch (e.key) {
+      case "ArrowDown":
+      case "j":
+        e.preventDefault();
+        session.navDown();
+        break;
+      case "ArrowUp":
+      case "k":
+        e.preventDefault();
+        session.navUp();
+        break;
+      case "ArrowRight":
+      case "l":
+        e.preventDefault();
+        session.navDrill();
+        break;
+      case "ArrowLeft":
+      case "h":
+        e.preventDefault();
+        session.navAscend();
+        break;
+      case "Enter":
+        e.preventDefault();
+        session.navEnterMove();
+        break;
+      case "D":
+        e.preventDefault();
+        session.navCopy(); // Shift+D copies into the highlighted folder
+        break;
+      case "d":
+        if (e.ctrlKey) {
+          e.preventDefault();
+          session.deleteHighlightedFolder(); // Ctrl+D deletes folder to trash
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        session.focusInbox();
         break;
     }
   }

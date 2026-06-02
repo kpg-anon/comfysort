@@ -3,6 +3,7 @@
   import { humanSize, extOf } from "$lib/api";
 
   let listEl: HTMLDivElement | undefined = $state();
+  const focused = $derived(session.focus === "inbox");
 
   // Keep the selected row visible as the cursor moves.
   $effect(() => {
@@ -10,20 +11,23 @@
     listEl?.querySelector(".row.active")?.scrollIntoView({ block: "nearest" });
   });
 
-  const totalBytes = $derived(session.inbox.reduce((a, i) => a + i.sizeBytes, 0));
+  const arrow = $derived(session.sortOrder === "desc" ? "↓" : "↑");
 </script>
 
-<section class="pane">
-  <div class="title">「 Inbox 」</div>
+<section class="pane" class:focused>
+  <div class="title">
+    <span>「 Inbox{focused ? " *" : ""} 」</span>
+    <span class="modes">sort {session.sortField}{arrow} · filter {session.filter}</span>
+  </div>
   <div class="cols">
     <span>Name</span><span class="r">Size</span><span class="r">Type</span>
   </div>
   <div class="list" bind:this={listEl}>
-    {#each session.inbox as item, i (item.path)}
+    {#each session.view as item, i (item.path)}
       <button
         class="row"
         class:active={i === session.cursor}
-        onclick={() => session.select(i)}
+        onclick={() => { session.focusInbox(); session.select(i); }}
       >
         <span class="cursor">{i === session.cursor ? "›" : ""}</span>
         <span class="name" title={item.fileName}>{item.fileName}</span>
@@ -32,13 +36,17 @@
           >{extOf(item.fileName).toUpperCase() || "?"}</span></span>
       </button>
     {/each}
-    {#if session.inbox.length === 0}
-      <div class="empty">Inbox is empty — everything sorted.</div>
+    {#if session.view.length === 0}
+      <div class="empty">
+        {session.total === 0 && session.filter !== "all"
+          ? `No ${session.filter} here — press f to change filter.`
+          : "Inbox is empty — everything sorted."}
+      </div>
     {/if}
   </div>
   <div class="footer">
     <span>{session.total} items</span>
-    <span>{humanSize(totalBytes)}</span>
+    <span>{humanSize(session.viewBytes)}</span>
   </div>
 </section>
 
@@ -52,11 +60,18 @@
     border-radius: var(--radius);
     overflow: hidden;
   }
+  .pane.focused { border-color: var(--purple); }
   .title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
     padding: 8px 12px 4px;
     color: var(--text-primary);
     font-weight: 600;
   }
+  .focused .title > span:first-child { color: var(--purple); }
+  .modes { font-size: 10.5px; font-weight: 400; color: var(--text-muted); font-family: var(--mono); }
   .cols {
     display: grid;
     grid-template-columns: 16px 1fr auto auto;
@@ -67,12 +82,7 @@
     border-bottom: 1px solid var(--border-muted);
   }
   .cols .r { text-align: right; }
-  .list {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 4px 6px;
-  }
+  .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px; }
   .row {
     display: grid;
     grid-template-columns: 16px 1fr auto auto;
@@ -89,23 +99,13 @@
     font-size: 12.5px;
   }
   .row:hover { background: var(--bg-panel-alt); }
-  .row.active {
-    background: var(--bg-selected);
-    color: var(--text-primary);
-  }
+  .row.active { background: var(--bg-selected); color: var(--text-primary); }
+  .focused .row.active { box-shadow: inset 2px 0 0 var(--green); }
   .cursor { color: var(--green); font-weight: 700; }
-  .name {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
+  .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .r { text-align: right; }
   .size { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-  .empty {
-    padding: 24px 12px;
-    color: var(--text-muted);
-    text-align: center;
-  }
+  .empty { padding: 24px 12px; color: var(--text-muted); text-align: center; }
   .footer {
     display: flex;
     justify-content: space-between;

@@ -6,8 +6,10 @@ use crate::domain::{
     DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpKind, OpOutcome, STATE_DIR,
     SessionView, journal_path, trash_dir,
 };
+use crate::logging::log;
 use crate::media::scan_inbox;
 use crate::operations::{CompletedOp, OperationEngine, OperationKind};
+use crate::search;
 use std::path::{Path, PathBuf};
 
 pub struct Session {
@@ -23,6 +25,23 @@ impl Session {
         let inbox = scan_inbox(&input)?;
         let destinations = scan_destinations(&output)?;
         let engine = OperationEngine::new(journal_path(&output));
+
+        // Session-open diagnostic banner: exactly what the scanner found this
+        // launch, so a reported file-disappearance can be traced to the scan.
+        log(
+            &output,
+            &format!(
+                "session open: input={} output={} destinations={} inbox={}",
+                input.display(),
+                output.display(),
+                destinations.len(),
+                inbox.len()
+            ),
+        );
+        for item in &inbox {
+            log(&output, &format!("  inbox item: {}", item.file_name));
+        }
+
         let view = SessionView {
             input: input.to_string_lossy().into_owned(),
             output: output.to_string_lossy().into_owned(),
@@ -112,6 +131,10 @@ impl Session {
 
     pub fn move_item(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<OpOutcome> {
         let resolved = self.engine.move_file(source, dest_dir)?;
+        log(
+            &self.output,
+            &format!("move: {} -> {}", source.display(), resolved.display()),
+        );
         Ok(self.outcome(
             OpKind::Move,
             format!("Moved to {}", self.label_for_dir(dest_dir)),
@@ -124,6 +147,10 @@ impl Session {
 
     pub fn copy_item(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<OpOutcome> {
         let resolved = self.engine.copy_file(source, dest_dir)?;
+        log(
+            &self.output,
+            &format!("copy: {} -> {}", source.display(), resolved.display()),
+        );
         Ok(self.outcome(
             OpKind::Copy,
             format!("Copied to {}", self.label_for_dir(dest_dir)),
@@ -137,6 +164,10 @@ impl Session {
     pub fn trash_item(&mut self, source: &Path) -> anyhow::Result<OpOutcome> {
         let dir = trash_dir(&self.output);
         let resolved = self.engine.move_file(source, &dir)?;
+        log(
+            &self.output,
+            &format!("trash: {} -> {}", source.display(), resolved.display()),
+        );
         Ok(self.outcome(
             OpKind::Trash,
             "Moved to trash".to_owned(),
@@ -153,6 +184,15 @@ impl Session {
             source_path,
             resolved_path,
         } = self.engine.undo_last()?;
+        log(
+            &self.output,
+            &format!(
+                "undo {:?}: {} -> {}",
+                kind,
+                resolved_path.display(),
+                source_path.display()
+            ),
+        );
         match kind {
             OperationKind::Move => {
                 // A reversed move/trash restores the file to the inbox.
@@ -174,10 +214,89 @@ impl Session {
                 false,
                 None,
             )),
-            OperationKind::UndoMove | OperationKind::UndoCopy => {
+            OperationKind::DeleteFolder => Ok(self.outcome(
+                OpKind::Undo,
+                "Undo: restored folder".to_owned(),
+                &resolved_path,
+                &source_path,
+                false,
+                None,
+            )),
+            OperationKind::UndoMove
+            | OperationKind::UndoCopy
+            | OperationKind::UndoDeleteFolder => {
                 anyhow::bail!("undo records are not themselves undoable")
             }
         }
+    }
+
+    /// Move a destination folder into trash, reversible. Refuses to delete the
+    /// output root, the `.comfysort` state dir, or the trash dir itself.
+    pub fn delete_folder(&mut self, path: &Path) -> anyhow::Result<OpOutcome> {
+        let state = self.output.join(STATE_DIR);
+        let trash = trash_dir(&self.output);
+        if path == self.output {
+            anyhow::bail!("refusing to delete the output root");
+        }
+        if path == state || path.starts_with(&state) {
+            anyhow::bail!("refusing to delete the .comfysort state directory");
+        }
+        if path == trash {
+            anyhow::bail!("refusing to delete the trash directory");
+        }
+
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.to_string_lossy().into_owned());
+        let resolved = self.engine.delete_folder(path, &trash)?;
+        log(
+            &self.output,
+            &format!(
+                "delete_folder: {} -> {}",
+                path.display(),
+                resolved.display()
+            ),
+        );
+        Ok(self.outcome(
+            OpKind::Trash,
+            format!("Deleted {name} to trash"),
+            path,
+            &resolved,
+            false,
+            None,
+        ))
+    }
+
+    /// Recursively fuzzy-search every folder under the output root (skipping the
+    /// `.comfysort` dir). Returns the top matches sorted by score desc then name
+    /// asc, capped at 50. An empty query returns an empty vec.
+    pub fn search_folders(&self, query: &str) -> Vec<FolderEntry> {
+        if query.trim().is_empty() {
+            return Vec::new();
+        }
+        let mut scored = search::walk(&self.output, STATE_DIR, query);
+        scored.sort_by(|a, b| {
+            b.score
+                .cmp(&a.score)
+                .then_with(|| a.rel.cmp(&b.rel))
+        });
+        scored.truncate(50);
+        scored
+            .into_iter()
+            .map(|s| {
+                let name = Path::new(&s.path)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| s.rel.clone());
+                FolderEntry {
+                    media_count: count_media(&s.path),
+                    subfolder_count: count_subfolders(&s.path),
+                    path: s.path.to_string_lossy().into_owned(),
+                    name,
+                }
+            })
+            .collect()
     }
 
     /// Create a new folder under `parent` and return it as a destination.
