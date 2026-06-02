@@ -38,6 +38,15 @@
     const t = e.target as HTMLElement;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
 
+    // --- Global: Esc closes an open fuzzy search before any pane action, even
+    //     if the search input lost focus (otherwise it would fall through to
+    //     navigatorKey and swap focus to the Inbox). ---
+    if (e.key === "Escape" && session.searching) {
+      e.preventDefault();
+      session.exitSearch();
+      return;
+    }
+
     // --- Global: focus switching ---
     if (e.key === "Tab") {
       e.preventDefault();
