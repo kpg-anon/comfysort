@@ -10,6 +10,7 @@
   import BottomBar from "$lib/components/BottomBar.svelte";
   import StartScreen from "$lib/components/StartScreen.svelte";
   import Settings from "$lib/components/Settings.svelte";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -22,6 +23,11 @@
   // Apply the active theme preset to the document (re-themes all tokens).
   $effect(() => {
     document.documentElement.dataset.theme = settings.theme;
+  });
+  // When the cross-drive prompt opens, drop focus from any text field so its
+  // y/a/n keys aren't captured by an input.
+  $effect(() => {
+    if (session.crossPrompt) (document.activeElement as HTMLElement | null)?.blur();
   });
 
   // Resolve a layout-stable hotkey slot from a KeyboardEvent.code.
@@ -38,18 +44,38 @@
   function onKey(e: KeyboardEvent) {
     if (!open) return;
 
+    // Any keypress dismisses an open context menu (the action still proceeds).
+    if (session.ctx) session.closeContext();
+
+    // --- Global: F5 refreshes the inbox instead of reloading the webview
+    //     (a page reload would drop the session back to the start screen). ---
+    if (e.key === "F5") {
+      e.preventDefault();
+      session.refreshInbox();
+      return;
+    }
+    // --- Global: stop Ctrl+R from reloading the webview; in the Inbox it flips
+    //     the sort order. ---
+    if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
+      e.preventDefault();
+      if (session.focus === "inbox") session.toggleSortOrder();
+      return;
+    }
+
     // --- Modal: settings overlay swallows app shortcuts (its own controls work) ---
     if (settings.open) {
       if (e.key === "Escape") { e.preventDefault(); settings.close(); }
       return;
     }
 
-    // --- Modal: cross-drive confirm swallows all other input ---
+    // --- Modal: cross-drive confirm swallows ALL input (incl. when a search/
+    //     input field has focus — preventDefault stops stray text entry). ---
     if (session.crossPrompt) {
+      e.preventDefault();
       const k = e.key.toLowerCase();
-      if (k === "y") { e.preventDefault(); session.resolveCross("once"); }
-      else if (k === "a") { e.preventDefault(); session.resolveCross("always"); }
-      else if (k === "n" || e.key === "Escape") { e.preventDefault(); session.resolveCross("cancel"); }
+      if (k === "y") session.resolveCross("once");
+      else if (k === "a") session.resolveCross("always");
+      else if (k === "n" || e.key === "Escape") session.resolveCross("cancel");
       return;
     }
 
@@ -142,12 +168,6 @@
         e.preventDefault();
         session.cycleFilter();
         break;
-      case "r":
-        if (e.ctrlKey) {
-          e.preventDefault();
-          session.toggleSortOrder();
-        }
-        break;
     }
   }
 
@@ -195,7 +215,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window onkeydown={onKey} oncontextmenu={(e) => e.preventDefault()} />
 
 {#if !open}
   <StartScreen />
@@ -240,6 +260,7 @@
   {/if}
 
   <Settings />
+  <ContextMenu />
 {/if}
 
 <style>
@@ -313,8 +334,11 @@
     font-size: 12px;
   }
   .mbtn:hover { border-color: var(--text-muted); color: var(--text-primary); }
-  .mbtn.go { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, var(--border)); }
-  .mbtn.go:hover { border-color: var(--green); }
+  .mbtn.go {
+    background: var(--green); color: var(--text-inverse);
+    border-color: var(--green); font-weight: 600;
+  }
+  .mbtn.go:hover { filter: brightness(1.06); border-color: var(--green); }
   .mbtn.always { color: var(--orange); }
   .mbtn.always:hover { border-color: var(--orange); }
   .mbtn.cancel { color: var(--text-muted); }
@@ -326,4 +350,5 @@
     padding: 0 4px;
     font-size: 11px;
   }
+  .mbtn.go kbd { background: rgba(0, 0, 0, 0.18); border-color: rgba(0, 0, 0, 0.22); color: var(--text-inverse); }
 </style>

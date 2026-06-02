@@ -87,3 +87,91 @@ pub fn count_media(path: &Path) -> usize {
         })
         .unwrap_or(0)
 }
+
+/// Recursively count media files (`media_kind != Other`) in a folder's whole
+/// subtree (0 if unreadable/missing). Used by the Navigator so a folder holding
+/// only subfolders still shows its true descendant total instead of `(0)`.
+///
+/// This walks the *entire* subtree (one `read_dir` per directory, `file_type()`
+/// for the dir/file bit — no extra stat). The reserved `.comfysort` state dir is
+/// skipped. Symlinked directories are never recursed into: `file_type().is_dir()`
+/// is `false` for a symlink, so the walk only descends into real directories,
+/// which both avoids following links and rules out symlink-based cycles. The walk
+/// is iterative (explicit stack), so a very deep tree can't blow the call stack.
+///
+/// Unlike [`count_media`] and the per-op destination bumps (which stay cheap and
+/// immediate), this cost is borne only on navigation — an on-demand, frontend-
+/// debounced action — so the deeper walk is acceptable there.
+pub fn count_media_recursive(path: &Path) -> usize {
+    let mut total = 0usize;
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            // `file_type()` is served from the directory enumeration — cheaper
+            // than a full `metadata()` and, crucially, reports a symlink as
+            // neither file nor (followed) dir, so links are skipped entirely.
+            let ft = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+            if ft.is_dir() {
+                if entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(STATE_DIR)
+                {
+                    continue;
+                }
+                stack.push(entry.path());
+            } else if ft.is_file() && media_kind(&entry.path()) != MediaKind::Other {
+                total += 1;
+            }
+        }
+    }
+    total
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn count_media_recursive_sums_subtree_and_skips_state_dir() {
+        let dir = tempdir().unwrap();
+        let parent = dir.path().join("parent");
+        let a = parent.join("a");
+        let b = parent.join("b");
+        let state = parent.join(STATE_DIR);
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        fs::create_dir_all(&state).unwrap();
+
+        // `parent` itself holds no direct media file — only a non-media note and
+        // subfolders — so the immediate count is 0 but the subtree total is 2.
+        fs::write(parent.join("note.txt"), b"x").unwrap();
+        fs::write(a.join("1.jpg"), b"img").unwrap();
+        fs::write(b.join("2.png"), b"img").unwrap();
+        // Media under the reserved state dir must NOT be counted.
+        fs::write(state.join("hidden.jpg"), b"img").unwrap();
+
+        assert_eq!(count_media(&parent), 0, "no immediate media in parent");
+        assert_eq!(
+            count_media_recursive(&parent),
+            2,
+            "recursive total counts a/1.jpg and b/2.png, skipping note.txt and .comfysort"
+        );
+    }
+
+    #[test]
+    fn count_media_recursive_missing_dir_is_zero() {
+        let dir = tempdir().unwrap();
+        let missing = dir.path().join("nope");
+        assert_eq!(count_media_recursive(&missing), 0);
+    }
+}

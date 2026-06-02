@@ -18,6 +18,7 @@ pub fn run() {
             commands::create_folder,
             commands::undo,
             commands::list_folders,
+            commands::rescan_inbox,
             commands::delete_folder,
             commands::search_folders,
             commands::bind_folder,

@@ -55,6 +55,9 @@
     else if (e.key === "Escape") { session.cancelNewFolder(); newName = ""; }
   }
   function onSearchKey(e: KeyboardEvent) {
+    // While the cross-drive modal is up, let keys bubble to the window handler
+    // (which owns y/a/n) instead of swallowing them into the search field.
+    if (session.crossPrompt) return;
     e.stopPropagation();
     const el = e.currentTarget as HTMLInputElement;
     switch (e.key) {
@@ -179,7 +182,7 @@
   }
   .pane.focused { border-color: var(--purple); }
   .head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 2px 12px; }
-  .title { color: var(--purple); font-weight: 600; }
+  .title { color: var(--purple); font-weight: 600; font-family: var(--sans); }
   .actions { display: flex; gap: 6px; }
   .hbtn {
     display: grid; place-items: center;
@@ -201,7 +204,9 @@
     display: flex; align-items: center; gap: 6px; margin: 2px 10px 6px;
     border-bottom: 1px solid var(--border-muted); padding-bottom: 6px;
   }
-  .sicon { color: var(--purple); font-family: var(--mono); font-weight: 700; }
+  /* No font-family here — must inherit the .nf NerdIcons font so the magnifier
+     glyph renders (a mono override turned it into a tofu square). */
+  .sicon { color: var(--purple); font-size: 12px; }
   .searchbar input {
     flex: 1; background: var(--bg-app); border: 1px solid var(--purple);
     border-radius: var(--radius-sm); color: var(--text-primary); padding: 4px 8px;

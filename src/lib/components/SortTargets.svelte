@@ -40,7 +40,7 @@
     background: var(--bg-panel); border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
   }
-  .title { padding: 8px 12px 4px; color: var(--purple); font-weight: 600; }
+  .title { padding: 8px 12px 4px; color: var(--purple); font-weight: 600; font-family: var(--sans); }
   .list { overflow-y: auto; padding: 4px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
   .slot {
     display: grid;

@@ -1,7 +1,7 @@
 //! In-memory session state: the roots, the live destination list, and the
 //! operation engine. Wrapped in a `Mutex` and `manage`d by Tauri.
 
-use crate::destinations::{count_media, scan_destinations};
+use crate::destinations::{count_media, count_media_recursive, scan_destinations};
 use crate::domain::{
     CollisionPolicy, DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpKind, OpOutcome,
     STATE_DIR, SessionView, journal_path, trash_dir,
@@ -147,7 +147,12 @@ impl Session {
                     continue;
                 }
                 folders.push(FolderEntry {
-                    media_count: count_media(&path),
+                    // Recursive subtree total so a parent holding only subfolders
+                    // still shows its true descendant media count instead of (0).
+                    // `subfolder_count` stays immediate — it only drives a
+                    // "has children" indicator. The deeper walk's cost is borne on
+                    // navigation (on-demand, debounced on the frontend).
+                    media_count: count_media_recursive(&path),
                     subfolder_count: count_subfolders(&path),
                     path: path.to_string_lossy().into_owned(),
                     name,

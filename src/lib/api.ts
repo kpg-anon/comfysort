@@ -99,6 +99,8 @@ export const api = {
   diskSpace: (path: string): Promise<DiskSpace | null> =>
     invoke("disk_space", { path }),
 
+  rescanInbox: (): Promise<MediaItem[]> => invoke("rescan_inbox", {}),
+
   getSettings: (): Promise<Settings> => invoke("get_settings", {}),
   setSettings: (settings: Settings): Promise<void> => invoke("set_settings", { settings }),
   setCollisionPolicy: (policy: string): Promise<void> =>

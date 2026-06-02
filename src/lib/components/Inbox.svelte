@@ -38,7 +38,7 @@
     <span class="modes">sort <span class="vsort">{session.sortField}{arrow}</span> · filter <span class="vfilter">{session.filter}</span></span>
   </div>
   <div class="cols">
-    <span></span><span>Name</span><span class="r">Size</span><span class="c">Type</span>
+    <span>Name</span><span class="r">Size</span><span class="c">Type</span>
   </div>
   <div
     class="list"
@@ -56,8 +56,8 @@
             class:selected={session.isSelected(item.path)}
             style="top:{i * ROW_H}px"
             onclick={(e) => session.clickRow(i, e.shiftKey)}
+            oncontextmenu={(e) => session.openContext(e, item, i)}
           >
-            <span class="cursor">{i === session.cursor ? "›" : session.isSelected(item.path) ? "∗" : ""}</span>
             <span class="name" title={item.fileName}>
               <span class="nf kind kind-{item.kind}">{kindIcon(item.kind)}</span>
               <span class="nm">{item.fileName}</span>
@@ -93,7 +93,7 @@
     display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
     padding: 8px 12px 4px; color: var(--text-primary); font-weight: 600;
   }
-  .title > span:first-child { color: var(--purple); }
+  .title > span:first-child { color: var(--purple); font-family: var(--sans); }
   .modes { font-size: 10.5px; font-weight: 400; color: var(--text-muted); font-family: var(--mono); }
   .modes .vsort { color: var(--yellow); }
   .modes .vfilter { color: var(--cyan); }
@@ -101,8 +101,8 @@
      Name/Size/Type sit directly above their columns. Size/Type are fixed-width
      (not auto) so the header labels line up with the row values. */
   .cols {
-    display: grid; grid-template-columns: 11px 1fr 62px 50px; gap: 6px;
-    padding: 2px 11px 6px; color: var(--text-muted); font-size: 11px;
+    display: grid; grid-template-columns: 1fr 54px 46px; gap: 8px;
+    padding: 2px 13px 6px; color: var(--text-muted); font-size: 11px;
     border-bottom: 1px solid var(--border-muted);
   }
   .cols .r { text-align: right; }
@@ -113,20 +113,19 @@
     position: absolute;
     left: 0; right: 0;
     height: 26px;
-    display: grid; grid-template-columns: 11px 1fr 62px 50px; gap: 6px; align-items: center;
+    display: grid; grid-template-columns: 1fr 54px 46px; gap: 8px; align-items: center;
     border: none; background: transparent; color: var(--text-secondary);
-    text-align: left; padding: 0 6px; border-radius: var(--radius-sm);
+    text-align: left; padding: 0 8px; border-radius: var(--radius-sm);
     cursor: pointer; font-size: 12.5px;
   }
   .row .c { display: flex; align-items: center; justify-content: center; }
   /* Uniform-width extension chips so WEBM/WEBP don't read larger than JPG/MP4. */
   .ext-chip { min-width: 40px; justify-content: center; }
   .row:hover { background: var(--bg-panel-alt); }
-  .row.selected { background: var(--bg-selected-active); color: var(--text-primary); }
-  .row.active { background: var(--bg-selected); color: var(--text-primary); }
-  .focused .row.active { box-shadow: inset 2px 0 0 var(--green); }
-  .cursor { color: var(--green); font-weight: 700; }
-  .row.selected .cursor { color: var(--purple); }
+  /* Selection state is shown with a left accent bar + tinted bg (no glyph
+     column), reclaiming the full row width for the filename. */
+  .row.selected { background: var(--bg-selected-active); color: var(--text-primary); box-shadow: inset 3px 0 0 var(--purple); }
+  .row.active { background: var(--bg-selected); color: var(--text-primary); box-shadow: inset 3px 0 0 var(--green); }
   .name { display: flex; align-items: center; gap: 7px; min-width: 0; }
   .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .kind { font-size: 11px; flex: none; opacity: 0.85; }

@@ -22,6 +22,8 @@ export const I = {
   inbox: "", // nf-fa-inbox
   cog: "", // nf-fa-cog
   warn: "", // nf-fa-exclamation_triangle
+  refresh: "", // nf-fa-refresh
+  eye: "", // nf-fa-eye
 } as const;
 
 export function kindIcon(kind: MediaKind): string {

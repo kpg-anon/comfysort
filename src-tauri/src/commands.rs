@@ -3,7 +3,8 @@
 //! `anyhow` errors to strings the frontend can display.
 
 use comfysort_engine::domain::{
-    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, OpOutcome, SessionView,
+    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpOutcome,
+    SessionView,
 };
 use comfysort_engine::session::Session;
 use comfysort_engine::settings::{self, Settings};
@@ -158,6 +159,13 @@ pub fn undo(state: State<'_, AppState>) -> CmdResult<OpOutcome> {
 #[tauri::command]
 pub fn list_folders(state: State<'_, AppState>, path: String) -> CmdResult<FolderListing> {
     with_session(&state, |s| s.list_folders(&PathBuf::from(&path)))
+}
+
+/// Re-scan the input directory (e.g. after external changes) and return the
+/// fresh inbox. Destinations are left untouched.
+#[tauri::command]
+pub fn rescan_inbox(state: State<'_, AppState>) -> CmdResult<Vec<MediaItemDto>> {
+    with_session(&state, |s| s.rescan_inbox())
 }
 
 #[tauri::command]

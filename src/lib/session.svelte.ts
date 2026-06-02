@@ -15,6 +15,7 @@ import {
   type OpOutcome,
 } from "./api";
 import { settings } from "./settings.svelte";
+import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 
 type StatusKind = "info" | "good" | "bad";
 export type Focus = "inbox" | "navigator";
@@ -95,6 +96,9 @@ class SessionStore {
   diskTotal = $state<number | null>(null);
   #lastDisk = 0; // throttle timestamp for fetchDisk
   #navRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Right-click context menu on an inbox item.
+  ctx = $state<{ x: number; y: number; item: MediaItem } | null>(null);
 
   view = $derived.by<MediaItem[]>(() => {
     let items = this.allItems;
@@ -370,6 +374,55 @@ class SessionStore {
       return;
     }
     await this.runOne(() => api.undo());
+  }
+
+  // ---- Context menu + item actions -----------------------------------------
+
+  openContext(e: MouseEvent, item: MediaItem, index: number) {
+    e.preventDefault();
+    this.focusInbox();
+    this.select(index);
+    this.ctx = { x: e.clientX, y: e.clientY, item };
+  }
+  closeContext() {
+    if (this.ctx) this.ctx = null;
+  }
+  async openInDefault(path: string) {
+    this.closeContext();
+    try {
+      await openPath(path);
+    } catch (e) {
+      this.setStatus(`Open failed: ${e}`, "bad");
+    }
+  }
+  async revealInExplorer(path: string) {
+    this.closeContext();
+    try {
+      await revealItemInDir(path);
+    } catch (e) {
+      this.setStatus(`Reveal failed: ${e}`, "bad");
+    }
+  }
+  async trashPath(path: string) {
+    this.closeContext();
+    await this.runMany([path], (p) => api.trashItem(p), true);
+  }
+
+  /** Re-scan the input directory and adopt the fresh list, keeping the cursor. */
+  async refreshInbox() {
+    this.closeContext();
+    try {
+      const items = await api.rescanInbox();
+      const curPath = this.current?.path;
+      this.allItems = items;
+      const i = curPath ? this.view.findIndex((x) => x.path === curPath) : -1;
+      this.cursor = i >= 0 ? i : Math.min(this.cursor, Math.max(0, this.view.length - 1));
+      this.clearSelection();
+      this.fetchDisk(true);
+      this.setStatus(`Refreshed — ${items.length} items`, "info");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
   }
 
   // ---- Navigator -----------------------------------------------------------
