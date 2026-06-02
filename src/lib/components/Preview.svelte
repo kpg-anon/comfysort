@@ -1,5 +1,6 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
+  import { settings } from "$lib/settings.svelte";
   import { humanSize, extOf } from "$lib/api";
   import { kindIcon } from "$lib/icons";
   import { convertFileSrc } from "@tauri-apps/api/core";
@@ -34,7 +35,7 @@
     {:else if item.kind === "video"}
       {#key item.path}
         <!-- svelte-ignore a11y_media_has_caption -->
-        <video {src} controls autoplay muted loop></video>
+        <video {src} controls autoplay={settings.videoAutoplay} muted={settings.videoMuted} loop={settings.videoLoop}></video>
       {/key}
     {:else}
       <div class="placeholder">No preview for this file type</div>

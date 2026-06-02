@@ -3,14 +3,24 @@
 //! `anyhow` errors to strings the frontend can display.
 
 use comfysort_engine::domain::{
-    DestinationDto, FolderEntry, FolderListing, OpOutcome, SessionView,
+    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, OpOutcome, SessionView,
 };
 use comfysort_engine::session::Session;
+use comfysort_engine::settings::{self, Settings};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
+
+/// Absolute path to the persisted `config.toml` in the app's config dir.
+fn config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("could not resolve app config dir: {e}"))?;
+    Ok(dir.join("config.toml"))
+}
 
 /// Free + total bytes on the volume holding a path (for the footer readout).
 #[derive(Serialize)]
@@ -192,4 +202,38 @@ pub fn would_cross_volume(source: String, dest_dir: String) -> bool {
         &PathBuf::from(&source),
         &PathBuf::from(&dest_dir),
     )
+}
+
+/// Load the persisted settings from `config.toml`. Never fails on a missing or
+/// corrupt file — the engine returns defaults — so this only errors if the
+/// config dir itself can't be resolved.
+#[tauri::command]
+pub fn get_settings(app: tauri::AppHandle) -> CmdResult<Settings> {
+    Ok(settings::load(&config_path(&app)?))
+}
+
+/// Persist the full settings struct to `config.toml` (atomically). This is the
+/// single source of truth for both backend behavior and the frontend's overlay.
+#[tauri::command]
+pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> CmdResult<()> {
+    let path = config_path(&app)?;
+    settings::save(&path, &settings).map_err(|e| e.to_string())
+}
+
+/// Apply the collision policy to the live session (if one is open). Parses the
+/// frontend's lowercase string into the engine enum; a no-op `Ok(())` when no
+/// session is open. Persisting the choice is the frontend's job via `set_settings`.
+#[tauri::command]
+pub fn set_collision_policy(state: State<'_, AppState>, policy: String) -> CmdResult<()> {
+    let parsed = match policy.as_str() {
+        "rename" => CollisionPolicy::Rename,
+        "skip" => CollisionPolicy::Skip,
+        "overwrite" => CollisionPolicy::Overwrite,
+        other => return Err(format!("unknown collision policy: {other}")),
+    };
+    let mut guard = state.session.lock().map_err(|_| "session lock poisoned")?;
+    if let Some(session) = guard.as_mut() {
+        session.set_collision_policy(parsed);
+    }
+    Ok(())
 }

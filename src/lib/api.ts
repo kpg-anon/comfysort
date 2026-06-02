@@ -98,12 +98,43 @@ export const api = {
 
   diskSpace: (path: string): Promise<DiskSpace | null> =>
     invoke("disk_space", { path }),
+
+  getSettings: (): Promise<Settings> => invoke("get_settings", {}),
+  setSettings: (settings: Settings): Promise<void> => invoke("set_settings", { settings }),
+  setCollisionPolicy: (policy: string): Promise<void> =>
+    invoke("set_collision_policy", { policy }),
 };
 
 export interface DiskSpace {
   freeBytes: number;
   totalBytes: number;
 }
+
+export type CollisionPolicyName = "rename" | "skip" | "overwrite";
+
+export interface Settings {
+  collisionPolicy: CollisionPolicyName;
+  confirmFolderDelete: boolean;
+  confirmCrossDrive: boolean;
+  defaultSortField: "name" | "size" | "mod";
+  defaultSortOrder: "asc" | "desc";
+  defaultFilter: "all" | "images" | "videos";
+  videoAutoplay: boolean;
+  videoLoop: boolean;
+  videoMuted: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  collisionPolicy: "rename",
+  confirmFolderDelete: true,
+  confirmCrossDrive: true,
+  defaultSortField: "mod",
+  defaultSortOrder: "desc",
+  defaultFilter: "all",
+  videoAutoplay: true,
+  videoLoop: true,
+  videoMuted: true,
+};
 
 /** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */
 export function volumeLabel(path: string): string {

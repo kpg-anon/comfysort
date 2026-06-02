@@ -182,8 +182,10 @@
   .title { color: var(--purple); font-weight: 600; }
   .actions { display: flex; gap: 6px; }
   .hbtn {
+    display: grid; place-items: center;
     border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-secondary);
-    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 12px; line-height: 1;
+    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 12px;
+    padding: 0;
   }
   .hbtn:hover { border-color: var(--purple); color: var(--purple); }
   .crumbs {

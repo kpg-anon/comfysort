@@ -1,5 +1,6 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
+  import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
   function norm(p: string): string {
@@ -37,6 +38,7 @@
       <span class="txt">{session.output ? leaf(session.output) : ""}</span>
     </button>
     <span class="brand">comfysort</span>
+    <button class="cog nf" title="Settings" onclick={() => settings.toggleOpen()}>{I.cog}</button>
   </div>
 </header>
 
@@ -85,4 +87,11 @@
   .output { color: var(--cyan); }
   .output:hover { border-color: var(--cyan); }
   .brand { color: var(--text-muted); font-family: var(--mono); font-size: 12px; flex: none; }
+  .cog {
+    display: grid; place-items: center;
+    width: 26px; height: 26px; flex: none;
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-muted);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; padding: 0;
+  }
+  .cog:hover { color: var(--purple); border-color: var(--purple); }
 </style>

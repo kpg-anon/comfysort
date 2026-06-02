@@ -9,8 +9,15 @@
   import Navigator from "$lib/components/Navigator.svelte";
   import BottomBar from "$lib/components/BottomBar.svelte";
   import StartScreen from "$lib/components/StartScreen.svelte";
+  import Settings from "$lib/components/Settings.svelte";
+  import { settings } from "$lib/settings.svelte";
 
   const open = $derived(session.input !== null && session.output !== null);
+
+  // Load persisted settings (config.toml) once at startup so session defaults apply.
+  $effect(() => {
+    if (!settings.loaded) settings.load();
+  });
 
   // Resolve a layout-stable hotkey slot from a KeyboardEvent.code.
   function slotFromCode(code: string): string | null {
@@ -25,6 +32,12 @@
   // across panes; navigation keys route by which pane has focus.
   function onKey(e: KeyboardEvent) {
     if (!open) return;
+
+    // --- Modal: settings overlay swallows app shortcuts (its own controls work) ---
+    if (settings.open) {
+      if (e.key === "Escape") { e.preventDefault(); settings.close(); }
+      return;
+    }
 
     // --- Modal: cross-drive confirm swallows all other input ---
     if (session.crossPrompt) {
@@ -215,6 +228,8 @@
       </div>
     </div>
   {/if}
+
+  <Settings />
 {/if}
 
 <style>

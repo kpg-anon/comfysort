@@ -67,8 +67,13 @@ impl OperationEngine {
 
     /// Move `source` into `dest_dir`, journaled and undoable. Trash is just a
     /// move into the trash directory, so undo restores it the same way.
-    pub fn move_file(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
-        let resolved = self.plan(source, dest_dir)?;
+    pub fn move_file(
+        &mut self,
+        source: &Path,
+        dest_dir: &Path,
+        policy: CollisionPolicy,
+    ) -> anyhow::Result<PathBuf> {
+        let resolved = self.plan(source, dest_dir, policy)?;
         self.record(OperationKind::Move, OperationStatus::Intent, source, &resolved);
         relocate(source, &resolved)?;
         self.record(
@@ -86,8 +91,13 @@ impl OperationEngine {
     }
 
     /// Copy `source` into `dest_dir`, leaving the original in place.
-    pub fn copy_file(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
-        let resolved = self.plan(source, dest_dir)?;
+    pub fn copy_file(
+        &mut self,
+        source: &Path,
+        dest_dir: &Path,
+        policy: CollisionPolicy,
+    ) -> anyhow::Result<PathBuf> {
+        let resolved = self.plan(source, dest_dir, policy)?;
         self.record(OperationKind::Copy, OperationStatus::Intent, source, &resolved);
         fs::copy(source, &resolved)?;
         self.record(
@@ -194,12 +204,17 @@ impl OperationEngine {
 
     /// Resolve the final destination path, creating the directory and applying
     /// the collision policy (rename by default).
-    fn plan(&self, source: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
+    fn plan(
+        &self,
+        source: &Path,
+        dest_dir: &Path,
+        policy: CollisionPolicy,
+    ) -> anyhow::Result<PathBuf> {
         let file_name = source
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("source path has no file name"))?;
         fs::create_dir_all(dest_dir)?;
-        resolve_collision(dest_dir.join(file_name), CollisionPolicy::Rename)
+        resolve_collision(dest_dir.join(file_name), policy)
     }
 
     fn record(
@@ -358,7 +373,7 @@ mod tests {
         fs::write(&src, b"img").unwrap();
 
         let mut engine = OperationEngine::new(dir.path().join("j.jsonl"));
-        let resolved = engine.move_file(&src, &keep).unwrap();
+        let resolved = engine.move_file(&src, &keep, CollisionPolicy::Rename).unwrap();
         assert!(!src.exists());
         assert!(resolved.exists());
 
@@ -377,7 +392,7 @@ mod tests {
         fs::write(&src, b"img").unwrap();
 
         let mut engine = OperationEngine::new(dir.path().join("j.jsonl"));
-        let resolved = engine.copy_file(&src, &keep).unwrap();
+        let resolved = engine.copy_file(&src, &keep, CollisionPolicy::Rename).unwrap();
         assert!(src.exists());
         assert!(resolved.exists());
 
@@ -422,6 +437,46 @@ mod tests {
             Path::new(r"C:\in\a.jpg"),
             Path::new(r"C:\out\keep")
         ));
+    }
+
+    #[test]
+    fn move_with_skip_bails_when_destination_exists() {
+        let dir = tempdir().unwrap();
+        let inbox = dir.path().join("inbox");
+        let keep = dir.path().join("keep");
+        fs::create_dir_all(&inbox).unwrap();
+        fs::create_dir_all(&keep).unwrap();
+        let src = inbox.join("a.jpg");
+        fs::write(&src, b"new").unwrap();
+        // Pre-existing file at the destination.
+        fs::write(keep.join("a.jpg"), b"old").unwrap();
+
+        let mut engine = OperationEngine::new(dir.path().join("j.jsonl"));
+        let result = engine.move_file(&src, &keep, CollisionPolicy::Skip);
+        assert!(result.is_err(), "Skip must bail on an existing destination");
+        // Nothing moved: source intact, destination untouched.
+        assert!(src.exists());
+        assert_eq!(fs::read(keep.join("a.jpg")).unwrap(), b"old");
+    }
+
+    #[test]
+    fn move_with_overwrite_replaces_existing_destination() {
+        let dir = tempdir().unwrap();
+        let inbox = dir.path().join("inbox");
+        let keep = dir.path().join("keep");
+        fs::create_dir_all(&inbox).unwrap();
+        fs::create_dir_all(&keep).unwrap();
+        let src = inbox.join("a.jpg");
+        fs::write(&src, b"new").unwrap();
+        fs::write(keep.join("a.jpg"), b"old").unwrap();
+
+        let mut engine = OperationEngine::new(dir.path().join("j.jsonl"));
+        let resolved = engine
+            .move_file(&src, &keep, CollisionPolicy::Overwrite)
+            .unwrap();
+        assert_eq!(resolved, keep.join("a.jpg"));
+        assert!(!src.exists(), "source consumed by the move");
+        assert_eq!(fs::read(&resolved).unwrap(), b"new", "destination overwritten");
     }
 
     #[test]

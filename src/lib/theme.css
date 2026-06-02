@@ -99,3 +99,13 @@ html, body {
 *::-webkit-scrollbar-track { background: transparent; }
 
 button { font-family: inherit; }
+
+/* Kill the inconsistent UA focus ring on mouse/modifier clicks; keep a clean
+   themed ring only for genuine keyboard focus (:focus-visible). */
+button:focus,
+[tabindex]:focus { outline: none; }
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}

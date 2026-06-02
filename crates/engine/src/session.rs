@@ -3,8 +3,8 @@
 
 use crate::destinations::{count_media, scan_destinations};
 use crate::domain::{
-    DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpKind, OpOutcome, STATE_DIR,
-    SessionView, journal_path, trash_dir,
+    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpKind, OpOutcome,
+    STATE_DIR, SessionView, journal_path, trash_dir,
 };
 use crate::logging::log;
 use crate::media::scan_inbox;
@@ -25,6 +25,9 @@ pub struct Session {
     destinations: Vec<DestinationDto>,
     engine: OperationEngine,
     user_bindings: PersistedBindings,
+    /// Collision policy applied to user-initiated moves/copies. Trash and folder
+    /// delete always force `Rename` regardless of this, so they never clobber.
+    collision_policy: CollisionPolicy,
 }
 
 impl Session {
@@ -105,8 +108,15 @@ impl Session {
             destinations,
             engine,
             user_bindings,
+            collision_policy: CollisionPolicy::Rename,
         };
         Ok((session, view))
+    }
+
+    /// Set the collision policy used by subsequent user moves/copies. Trash and
+    /// folder delete are unaffected (they always rename to avoid clobbering).
+    pub fn set_collision_policy(&mut self, p: CollisionPolicy) {
+        self.collision_policy = p;
     }
 
     /// Re-scan the input directory (e.g. after external changes) and return the
@@ -182,7 +192,9 @@ impl Session {
     }
 
     pub fn move_item(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<OpOutcome> {
-        let resolved = self.engine.move_file(source, dest_dir)?;
+        let resolved = self
+            .engine
+            .move_file(source, dest_dir, self.collision_policy)?;
         log(
             &self.output,
             &format!("move: {} -> {}", source.display(), resolved.display()),
@@ -198,7 +210,9 @@ impl Session {
     }
 
     pub fn copy_item(&mut self, source: &Path, dest_dir: &Path) -> anyhow::Result<OpOutcome> {
-        let resolved = self.engine.copy_file(source, dest_dir)?;
+        let resolved = self
+            .engine
+            .copy_file(source, dest_dir, self.collision_policy)?;
         log(
             &self.output,
             &format!("copy: {} -> {}", source.display(), resolved.display()),
@@ -215,7 +229,10 @@ impl Session {
 
     pub fn trash_item(&mut self, source: &Path) -> anyhow::Result<OpOutcome> {
         let dir = trash_dir(&self.output);
-        let resolved = self.engine.move_file(source, &dir)?;
+        // Trash must never clobber, regardless of the user's collision setting.
+        let resolved = self
+            .engine
+            .move_file(source, &dir, CollisionPolicy::Rename)?;
         log(
             &self.output,
             &format!("trash: {} -> {}", source.display(), resolved.display()),

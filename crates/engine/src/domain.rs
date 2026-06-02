@@ -16,7 +16,8 @@ pub enum MediaKind {
 
 /// Default collision policy: Windows-Explorer-style `name (2).ext` rename.
 /// Never overwrite by default — a sort must never silently destroy a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CollisionPolicy {
     Rename,
     Skip,

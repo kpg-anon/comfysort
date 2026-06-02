@@ -20,6 +20,7 @@ export const I = {
   tag: "", // nf-fa-tag
   drive: "", // nf-fa-hdd_o
   inbox: "", // nf-fa-inbox
+  cog: "", // nf-fa-cog
 } as const;
 
 export function kindIcon(kind: MediaKind): string {

@@ -14,6 +14,7 @@ import {
   type OpKind,
   type OpOutcome,
 } from "./api";
+import { settings } from "./settings.svelte";
 
 type StatusKind = "info" | "good" | "bad";
 export type Focus = "inbox" | "navigator";
@@ -233,6 +234,10 @@ class SessionStore {
       this.cursor = 0;
       this.canUndo = false;
       this.focus = "inbox";
+      // Apply configured inbox defaults (the user can still change them in-session).
+      this.sortField = settings.defaultSortField;
+      this.sortOrder = settings.defaultSortOrder;
+      this.filter = settings.defaultFilter;
       this.clearSelection();
       this.exitSearch();
       this.creatingFolder = false;
@@ -284,7 +289,7 @@ class SessionStore {
     const paths = this.targetPaths();
     if (paths.length === 0) return;
     const name = label ?? destDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? destDir;
-    if (!this.allowCrossDevice && (await api.wouldCrossVolume(paths[0], destDir))) {
+    if (settings.confirmCrossDrive && !this.allowCrossDevice && (await api.wouldCrossVolume(paths[0], destDir))) {
       this.crossPrompt = {
         count: paths.length,
         destLabel: name,
@@ -440,7 +445,8 @@ class SessionStore {
     const folder = this.navHighlighted;
     if (!folder) return;
     const tag = folder.mediaCount + folder.subfolderCount > 0 ? " (not empty)" : "";
-    if (!confirm(`Move "${folder.name}"${tag} to trash? This can be undone.`)) return;
+    if (settings.confirmFolderDelete && !confirm(`Move "${folder.name}"${tag} to trash? This can be undone.`))
+      return;
     await this.runOne(() => api.deleteFolder(folder.path));
     if (this.nav) await this.loadFolders(this.nav.path);
   }

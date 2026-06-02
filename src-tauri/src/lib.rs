@@ -24,6 +24,9 @@ pub fn run() {
             commands::unbind_hotkey,
             commands::would_cross_volume,
             commands::disk_space,
+            commands::get_settings,
+            commands::set_settings,
+            commands::set_collision_policy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
