@@ -22,3 +22,6 @@ vite.config.ts.timestamp-*
 # public repo; README.md (public) lives at the root.
 /docs/
 /.claude/
+
+# Agent/contributor entry (local-only; harness-neutral front door)
+/AGENTS.md
