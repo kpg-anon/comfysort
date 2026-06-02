@@ -12,6 +12,10 @@ pub fn scan_inbox(root: &Path) -> std::io::Result<Vec<MediaItemDto>> {
             Err(_) => continue,
         };
         let path = entry.path();
+        // One metadata call per entry, served from the directory enumeration on
+        // Windows (`entry.metadata()`, not `fs::metadata(path)` which re-stats).
+        // We need the full struct here for `len()`/`modified()`, so this is the
+        // single unavoidable stat; `media_kind` below is path-only (no syscall).
         let meta = match entry.metadata() {
             Ok(m) if m.is_file() => m,
             _ => continue,

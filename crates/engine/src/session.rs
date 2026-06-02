@@ -134,7 +134,9 @@ impl Session {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if !entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+                // `file_type()` (from the enumeration) over a full `metadata()`
+                // stat — we only need the dir bit here.
+                if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                     continue;
                 }
                 let name = path
@@ -199,6 +201,9 @@ impl Session {
             &self.output,
             &format!("move: {} -> {}", source.display(), resolved.display()),
         );
+        // Incremental count: the file landed in `dest_dir`; bump only that
+        // destination instead of re-reading every destination directory.
+        self.bump_dest_count(dest_dir, 1);
         Ok(self.outcome(
             OpKind::Move,
             format!("Moved to {}", self.label_for_dir(dest_dir)),
@@ -217,6 +222,8 @@ impl Session {
             &self.output,
             &format!("copy: {} -> {}", source.display(), resolved.display()),
         );
+        // Incremental count: a duplicate now lives in `dest_dir`.
+        self.bump_dest_count(dest_dir, 1);
         Ok(self.outcome(
             OpKind::Copy,
             format!("Copied to {}", self.label_for_dir(dest_dir)),
@@ -237,6 +244,8 @@ impl Session {
             &self.output,
             &format!("trash: {} -> {}", source.display(), resolved.display()),
         );
+        // Incremental count: the trash destination gained a file.
+        self.bump_dest_count(&dir, 1);
         Ok(self.outcome(
             OpKind::Trash,
             "Moved to trash".to_owned(),
@@ -264,7 +273,11 @@ impl Session {
         );
         match kind {
             OperationKind::Move => {
-                // A reversed move/trash restores the file to the inbox.
+                // A reversed move/trash restores the file to the inbox, so the
+                // destination it left (the parent dir it sat in) loses one.
+                if let Some(left) = resolved_path.parent() {
+                    self.bump_dest_count(left, -1);
+                }
                 let restored = MediaItemDto::from_path(&source_path);
                 Ok(self.outcome(
                     OpKind::Undo,
@@ -275,14 +288,20 @@ impl Session {
                     restored,
                 ))
             }
-            OperationKind::Copy => Ok(self.outcome(
-                OpKind::Undo,
-                "Undo: removed duplicate".to_owned(),
-                &resolved_path,
-                &resolved_path,
-                false,
-                None,
-            )),
+            OperationKind::Copy => {
+                // The duplicate was removed from its destination.
+                if let Some(left) = resolved_path.parent() {
+                    self.bump_dest_count(left, -1);
+                }
+                Ok(self.outcome(
+                    OpKind::Undo,
+                    "Undo: removed duplicate".to_owned(),
+                    &resolved_path,
+                    &resolved_path,
+                    false,
+                    None,
+                ))
+            }
             OperationKind::DeleteFolder => Ok(self.outcome(
                 OpKind::Undo,
                 "Undo: restored folder".to_owned(),
@@ -485,7 +504,8 @@ impl Session {
         if let Ok(entries) = std::fs::read_dir(&self.output) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if !entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+                // `file_type()` from the enumeration; only the dir bit is needed.
+                if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                     continue;
                 }
                 let name = path
@@ -502,11 +522,33 @@ impl Session {
     }
 
     /// Re-count media in every destination and return the refreshed list.
+    /// Kept for bind/unbind, which restructure the destination list; the hot
+    /// per-op path uses [`Self::bump_dest_count`] instead to avoid N read_dirs.
     fn refreshed_destinations(&mut self) -> Vec<DestinationDto> {
         for dest in &mut self.destinations {
             dest.media_count = crate::destinations::count_media(Path::new(&dest.path));
         }
         self.destinations.clone()
+    }
+
+    /// Adjust the in-memory `media_count` of the destination whose path equals
+    /// `dir` by `delta` (saturating at 0). Matched by `Path` equality, not
+    /// string. If no destination row matches (e.g. a move into a deep nested
+    /// folder that isn't a bound destination) this is a no-op — there's simply
+    /// nothing to bump. This replaces a full destination rescan per operation:
+    /// O(num_destinations) `read_dir` calls become 0.
+    fn bump_dest_count(&mut self, dir: &Path, delta: i64) {
+        if let Some(dest) = self
+            .destinations
+            .iter_mut()
+            .find(|d| Path::new(&d.path) == dir)
+        {
+            if delta >= 0 {
+                dest.media_count += delta as usize;
+            } else {
+                dest.media_count = dest.media_count.saturating_sub((-delta) as usize);
+            }
+        }
     }
 
     fn label_for_dir(&self, dir: &Path) -> String {
@@ -539,7 +581,11 @@ impl Session {
             source_removed,
             restored_item,
             can_undo: self.engine.can_undo(),
-            destinations: self.refreshed_destinations(),
+            // Counts were already adjusted incrementally by the calling op
+            // method (move/copy/trash/undo). No full rescan here: a single
+            // operation touches the filesystem only for the file move/copy
+            // plus its journal, never for an N-destination recount.
+            destinations: self.destinations.clone(),
         }
     }
 }
@@ -550,8 +596,10 @@ fn count_subfolders(path: &Path) -> usize {
         .map(|entries| {
             entries
                 .flatten()
+                // `file_type()` (free from read_dir) over a full `metadata()`
+                // stat — single pass, only the dir bit is needed.
                 .filter(|e| {
-                    e.metadata().map(|m| m.is_dir()).unwrap_or(false)
+                    e.file_type().map(|t| t.is_dir()).unwrap_or(false)
                         && !e
                             .file_name()
                             .to_string_lossy()
@@ -560,4 +608,123 @@ fn count_subfolders(path: &Path) -> usize {
                 .count()
         })
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    /// Find a destination's in-memory media count by absolute path.
+    fn count_of(session: &Session, dir: &Path) -> usize {
+        session
+            .destinations
+            .iter()
+            .find(|d| Path::new(&d.path) == dir)
+            .map(|d| d.media_count)
+            .expect("destination present")
+    }
+
+    #[test]
+    fn move_increments_only_target_count_without_rescanning_others() {
+        let dir = tempdir().unwrap();
+        let input = dir.path().join("inbox");
+        let output = dir.path().join("out");
+        let keep = output.join("keep");
+        let other = output.join("other");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(&keep).unwrap();
+        fs::create_dir_all(&other).unwrap();
+        let src = input.join("a.jpg");
+        fs::write(&src, b"img").unwrap();
+
+        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        assert_eq!(count_of(&session, &keep), 0);
+
+        // Poison `other`'s in-memory count with a sentinel. If the op path did a
+        // full rescan, this would be recomputed back to 0; it must survive,
+        // proving the op only touched the target destination.
+        for d in session.destinations.iter_mut() {
+            if Path::new(&d.path) == other {
+                d.media_count = 999;
+            }
+        }
+
+        let outcome = session.move_item(&src, &keep).unwrap();
+
+        // Target bumped by exactly 1.
+        assert_eq!(count_of(&session, &keep), 1);
+        // Other destination untouched (no rescan occurred).
+        assert_eq!(count_of(&session, &other), 999);
+        // The returned DTOs carry the same incrementally-updated counts.
+        let dto_keep = outcome
+            .destinations
+            .iter()
+            .find(|d| Path::new(&d.path) == keep)
+            .unwrap();
+        assert_eq!(dto_keep.media_count, 1);
+        let dto_other = outcome
+            .destinations
+            .iter()
+            .find(|d| Path::new(&d.path) == other)
+            .unwrap();
+        assert_eq!(dto_other.media_count, 999);
+    }
+
+    #[test]
+    fn undo_move_decrements_target_count() {
+        let dir = tempdir().unwrap();
+        let input = dir.path().join("inbox");
+        let output = dir.path().join("out");
+        let keep = output.join("keep");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(&keep).unwrap();
+        let src = input.join("a.jpg");
+        fs::write(&src, b"img").unwrap();
+
+        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        session.move_item(&src, &keep).unwrap();
+        assert_eq!(count_of(&session, &keep), 1);
+
+        session.undo().unwrap();
+        assert_eq!(count_of(&session, &keep), 0, "undo restores the count");
+    }
+
+    #[test]
+    fn copy_increments_and_undo_decrements() {
+        let dir = tempdir().unwrap();
+        let input = dir.path().join("inbox");
+        let output = dir.path().join("out");
+        let keep = output.join("keep");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(&keep).unwrap();
+        let src = input.join("a.jpg");
+        fs::write(&src, b"img").unwrap();
+
+        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        session.copy_item(&src, &keep).unwrap();
+        assert_eq!(count_of(&session, &keep), 1);
+
+        session.undo().unwrap();
+        assert_eq!(count_of(&session, &keep), 0);
+    }
+
+    #[test]
+    fn trash_increments_trash_count() {
+        let dir = tempdir().unwrap();
+        let input = dir.path().join("inbox");
+        let output = dir.path().join("out");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(&output).unwrap();
+        let src = input.join("a.jpg");
+        fs::write(&src, b"img").unwrap();
+
+        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        let trash = trash_dir(&output);
+        assert_eq!(count_of(&session, &trash), 0);
+
+        session.trash_item(&src).unwrap();
+        assert_eq!(count_of(&session, &trash), 1);
+    }
 }

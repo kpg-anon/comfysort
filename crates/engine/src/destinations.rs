@@ -21,7 +21,9 @@ pub fn scan_destinations(output_root: &Path) -> std::io::Result<Vec<DestinationD
             Err(_) => continue,
         };
         let path = entry.path();
-        if !entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+        // `file_type()` is served from the directory enumeration and is cheaper
+        // than a full `metadata()` when we only need the dir/file bit.
+        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
             continue;
         }
         let label = path
@@ -74,8 +76,11 @@ pub fn count_media(path: &Path) -> usize {
         .map(|entries| {
             entries
                 .flatten()
+                // `file_type()` (free from the read_dir pass) instead of a full
+                // `metadata()` stat; `media_kind` is path-only. One pass, no
+                // per-entry re-stat via absolute paths.
                 .filter(|e| {
-                    e.metadata().map(|m| m.is_file()).unwrap_or(false)
+                    e.file_type().map(|t| t.is_file()).unwrap_or(false)
                         && media_kind(&e.path()) != MediaKind::Other
                 })
                 .count()

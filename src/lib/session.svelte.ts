@@ -33,6 +33,11 @@ export interface CrossPrompt {
 /** Hotkey slots that can be bound (mirrors the TUI's `is_bindable_hotkey`). */
 export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
 
+// Reused across the whole inbox sort. `localeCompare` builds a collator on every
+// call (very slow over 25k items); a single cached collator is far cheaper and
+// `numeric` gives natural ordering (file2 before file10).
+const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
 class SessionStore {
   input = $state<string | null>(null);
   output = $state<string | null>(null);
@@ -77,6 +82,8 @@ class SessionStore {
   // Free/total bytes on the output volume (footer readout).
   diskFree = $state<number | null>(null);
   diskTotal = $state<number | null>(null);
+  #lastDisk = 0; // throttle timestamp for fetchDisk
+  #navRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   view = $derived.by<MediaItem[]>(() => {
     let items = this.allItems;
@@ -87,7 +94,7 @@ class SessionStore {
     const sorted = [...items].sort((a, b) => {
       switch (this.sortField) {
         case "name":
-          return a.fileName.localeCompare(b.fileName);
+          return NAME_COLLATOR.compare(a.fileName, b.fileName);
         case "size":
           return a.sizeBytes - b.sizeBytes;
         case "mod":
@@ -98,14 +105,14 @@ class SessionStore {
     return sorted;
   });
 
+  // Memoized so the footer total doesn't re-reduce 25k items on every render.
+  viewBytes = $derived(this.view.reduce((a, i) => a + i.sizeBytes, 0));
+
   get current(): MediaItem | null {
     return this.view[this.cursor] ?? null;
   }
   get total(): number {
     return this.view.length;
-  }
-  get viewBytes(): number {
-    return this.view.reduce((a, i) => a + i.sizeBytes, 0);
   }
   get selectionCount(): number {
     return this.selectedPaths.size || (this.current ? 1 : 0);
@@ -242,7 +249,7 @@ class SessionStore {
       this.exitSearch();
       this.creatingFolder = false;
       await this.loadFolders(view.output);
-      this.fetchDisk();
+      this.fetchDisk(true);
       this.setStatus(`${view.inbox.length} items to sort`, "info");
     } catch (e) {
       // Shown on the start screen, and as a status if we're already in a session
@@ -371,13 +378,26 @@ class SessionStore {
     return this.nav?.folders[this.navCursor - offset] ?? null;
   }
 
-  async loadFolders(path: string) {
+  async loadFolders(path: string, preserveCursor = false) {
+    const prev = this.navCursor;
     try {
       this.nav = await api.listFolders(path);
-      this.navCursor = 0;
+      this.navCursor = preserveCursor ? Math.min(prev, Math.max(0, this.navRowCount - 1)) : 0;
     } catch (e) {
       this.setStatus(String(e), "bad");
     }
+  }
+
+  /** Debounced refresh of the current Navigator dir after operations. Over a
+   *  remote output tree, re-listing + counting on every op is costly, so we
+   *  coalesce bursts into one refresh and preserve the cursor position. */
+  private scheduleNavRefresh() {
+    if (!this.nav) return;
+    if (this.#navRefreshTimer != null) clearTimeout(this.#navRefreshTimer);
+    this.#navRefreshTimer = setTimeout(() => {
+      this.#navRefreshTimer = null;
+      if (this.nav) this.loadFolders(this.nav.path, true);
+    }, 600);
   }
   navDown() {
     if (this.navCursor < this.navRowCount - 1) this.navCursor++;
@@ -437,9 +457,14 @@ class SessionStore {
     }
   }
 
-  /** Refresh the footer disk readout for the output volume. */
-  async fetchDisk() {
+  /** Refresh the footer disk readout for the output volume. Throttled: free
+   *  space barely moves and the query hits the (possibly remote) volume, so
+   *  per-op calls are coalesced. `force` bypasses the throttle (session open). */
+  async fetchDisk(force = false) {
     if (!this.output) return;
+    const now = Date.now();
+    if (!force && now - this.#lastDisk < 4000) return;
+    this.#lastDisk = now;
     const info = await api.diskSpace(this.output);
     this.diskFree = info?.freeBytes ?? null;
     this.diskTotal = info?.totalBytes ?? null;
@@ -520,7 +545,7 @@ class SessionStore {
       const out = await op();
       this.applyOutcome(out);
       this.setStatus(out.message, kindToStatus(out.kind));
-      if (this.nav) await this.loadFolders(this.nav.path);
+      this.scheduleNavRefresh();
       this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
@@ -537,20 +562,29 @@ class SessionStore {
   ) {
     if (this.busy || paths.length === 0) return;
     this.busy = true;
+    const removed = new Set<string>();
     let done = 0;
     let last: OpOutcome | null = null;
     try {
       for (const p of paths) {
         last = await op(p);
-        this.applyOutcome(last);
+        if (last.sourceRemoved) removed.add(last.sourcePath);
         done++;
       }
+      // Single removal pass + one view re-derivation, instead of rebuilding the
+      // (potentially 25k-item) array once per moved file.
+      if (removed.size) {
+        this.allItems = this.allItems.filter((i) => !removed.has(i.path));
+        this.clampCursor();
+      }
       if (last) {
+        this.destinations = last.destinations;
+        this.canUndo = last.canUndo;
         const verb = last.kind === "copy" ? "Copied" : last.kind === "trash" ? "Trashed" : "Moved";
         this.setStatus(done > 1 ? `${verb} ${done} items` : last.message, kindToStatus(last.kind));
       }
       if (clearSel) this.clearSelection();
-      if (this.nav) await this.loadFolders(this.nav.path);
+      this.scheduleNavRefresh();
       this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
