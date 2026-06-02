@@ -511,11 +511,20 @@ class SessionStore {
   }
   async createFolderHere(name: string) {
     this.creatingFolder = false;
-    if (!this.nav || !name.trim()) return;
+    const clean = name.trim();
+    if (!this.nav || !clean) return;
+    const parent = this.nav.path;
     try {
-      await api.createFolder(this.nav.path, name.trim());
-      await this.loadFolders(this.nav.path);
-      this.setStatus(`Created ${name.trim()}`, "good");
+      const created = await api.createFolder(parent, clean);
+      await this.loadFolders(parent);
+      // Highlight the just-created folder so it's the active selection.
+      const target = normPath(created.path);
+      const idx = this.nav?.folders.findIndex((f) => normPath(f.path) === target) ?? -1;
+      if (idx >= 0) {
+        this.focusNavigator();
+        this.navCursor = (this.navHasParent ? 1 : 0) + idx;
+      }
+      this.setStatus(`Created ${clean}`, "good");
     } catch (e) {
       this.setStatus(String(e), "bad");
     }

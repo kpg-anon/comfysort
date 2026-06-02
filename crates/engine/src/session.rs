@@ -401,8 +401,10 @@ impl Session {
             .collect()
     }
 
-    /// Create a new folder under `parent` and return it as a destination.
-    /// Refreshes the live destination list so a fresh hotkey can be assigned.
+    /// Create a new folder under `parent` and return it as a destination DTO.
+    /// Does NOT touch `self.destinations`: a new folder isn't a sort target until
+    /// the user binds it, and re-scanning here would drop the applied hotkey
+    /// bindings (they're only re-applied on session open).
     pub fn create_folder(&mut self, parent: &Path, name: &str) -> anyhow::Result<DestinationDto> {
         let clean = name.trim();
         if clean.is_empty() || clean.contains(['/', '\\']) {
@@ -410,20 +412,13 @@ impl Session {
         }
         let path = parent.join(clean);
         std::fs::create_dir_all(&path)?;
-        self.destinations = scan_destinations(&self.output)?;
-        let created = self
-            .destinations
-            .iter()
-            .find(|d| Path::new(&d.path) == path)
-            .cloned()
-            .unwrap_or(DestinationDto {
-                label: clean.to_owned(),
-                path: path.to_string_lossy().into_owned(),
-                hotkey: None,
-                is_trash: false,
-                media_count: 0,
-            });
-        Ok(created)
+        Ok(DestinationDto {
+            label: clean.to_owned(),
+            path: path.to_string_lossy().into_owned(),
+            hotkey: None,
+            is_trash: false,
+            media_count: 0,
+        })
     }
 
     /// Bind a folder under the output subtree to a hotkey (`1..=9`, `-`, `=`).
