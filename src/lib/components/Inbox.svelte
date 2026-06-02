@@ -1,6 +1,7 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
   import { humanSize, extOf } from "$lib/api";
+  import { kindIcon } from "$lib/icons";
 
   let listEl: HTMLDivElement | undefined = $state();
   const focused = $derived(session.focus === "inbox");
@@ -31,7 +32,10 @@
         onclick={() => { session.focusInbox(); session.select(i); }}
       >
         <span class="cursor">{i === session.cursor ? "›" : session.isSelected(item.path) ? "∗" : ""}</span>
-        <span class="name" title={item.fileName}>{item.fileName}</span>
+        <span class="name" title={item.fileName}>
+          <span class="nf kind kind-{item.kind}">{kindIcon(item.kind)}</span>
+          <span class="nm">{item.fileName}</span>
+        </span>
         <span class="r size">{humanSize(item.sizeBytes)}</span>
         <span class="r"><span class="chip ext-{extOf(item.fileName) || 'other'}"
           >{extOf(item.fileName).toUpperCase() || "?"}</span></span>
@@ -105,7 +109,12 @@
   .focused .row.active { box-shadow: inset 2px 0 0 var(--green); }
   .cursor { color: var(--green); font-weight: 700; }
   .row.selected .cursor { color: var(--purple); }
-  .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .name { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .kind { font-size: 11px; flex: none; opacity: 0.85; }
+  .kind-image { color: var(--green); }
+  .kind-video { color: var(--blue); }
+  .kind-other { color: var(--text-muted); }
   .r { text-align: right; }
   .size { color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .empty { padding: 24px 12px; color: var(--text-muted); text-align: center; }

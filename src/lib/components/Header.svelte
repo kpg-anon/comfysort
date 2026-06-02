@@ -1,5 +1,6 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
+  import { I } from "$lib/icons";
 
   function norm(p: string): string {
     return p.replace(/\\/g, "/");
@@ -16,7 +17,7 @@
     title={"Inbox: " + (session.input ?? "") + "\nClick to choose a different folder"}
     onclick={() => session.changeInput()}
   >
-    <span class="dot"></span>
+    <span class="nf gi">{I.inbox}</span>
     <span class="txt">{session.input ? norm(session.input) : ""}</span>
   </button>
 
@@ -32,7 +33,7 @@
       title={"Destination root: " + (session.output ?? "") + "\nClick to choose a different root"}
       onclick={() => session.changeOutput()}
     >
-      <span class="olabel">out</span>
+      <span class="nf gi">{I.drive}</span>
       <span class="txt">{session.output ? leaf(session.output) : ""}</span>
     </button>
     <span class="brand">comfysort</span>
@@ -67,7 +68,7 @@
   .chip .txt { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .input { justify-self: start; color: var(--purple); }
   .input:hover { border-color: var(--purple); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); flex: none; }
+  .gi { font-size: 12px; flex: none; opacity: 0.9; }
   .status {
     justify-self: center;
     font-size: 12px;
@@ -83,6 +84,5 @@
   .right { justify-self: end; display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
   .output { color: var(--cyan); }
   .output:hover { border-color: var(--cyan); }
-  .olabel { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
   .brand { color: var(--text-muted); font-family: var(--mono); font-size: 12px; flex: none; }
 </style>

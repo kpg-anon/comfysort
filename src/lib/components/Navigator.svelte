@@ -1,5 +1,6 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
+  import { I } from "$lib/icons";
 
   let creating = $state(false);
   let newName = $state("");
@@ -67,15 +68,15 @@
   <div class="head">
     <div class="title">「 Navigator{focused ? " *" : ""} 」</div>
     {#if session.searching}
-      <button class="new" title="Close search (Esc)" onclick={() => session.exitSearch()}>×</button>
+      <button class="new nf" title="Close search (Esc)" onclick={() => session.exitSearch()}>{I.close}</button>
     {:else}
-      <button class="new" title="New folder here" onclick={startCreate}>＋</button>
+      <button class="new nf" title="New folder here" onclick={startCreate}>{I.plus}</button>
     {/if}
   </div>
 
   {#if session.searching}
     <div class="searchbar">
-      <span class="sicon">/</span>
+      <span class="sicon nf">{I.search}</span>
       <input
         bind:this={searchEl}
         value={session.searchQuery}
@@ -99,7 +100,7 @@
       {#each session.searchResults as r, i (r.path)}
         <div class="row" class:cursor={i === session.searchCursor}>
           <button class="drill" title={r.path} onclick={() => session.searchDrill(r)}>
-            <span class="icon"></span>
+            <span class="nf icon">{I.folder}</span>
             <span class="rname">
               <span class="name">{r.name}</span>
               <span class="rel">{relOf(r.path)}</span>
@@ -107,10 +108,10 @@
             <span class="count">({r.mediaCount})</span>
           </button>
           <div class="acts">
-            <button class="act move" title="Move here (Enter)" disabled={!session.current}
-              onclick={() => session.moveInto(r)}>→</button>
-            <button class="act copy" title="Copy here" disabled={!session.current}
-              onclick={() => session.copyInto(r)}>⧉</button>
+            <button class="act move nf" title="Move here (Enter)" disabled={!session.current}
+              onclick={() => session.moveInto(r)}>{I.arrowRight}</button>
+            <button class="act copy nf" title="Copy here" disabled={!session.current}
+              onclick={() => session.copyInto(r)}>{I.copy}</button>
           </div>
         </div>
       {/each}
@@ -123,29 +124,29 @@
       {#if hasParent}
         <button class="row up" class:cursor={focused && session.navCursor === 0}
           onclick={() => { session.focusNavigator(); session.navAscend(); }}>
-          <span class="icon">↩</span><span class="name">..</span>
+          <span class="nf icon">{I.levelUp}</span><span class="name">..</span>
         </button>
       {/if}
       {#each session.nav?.folders ?? [] as folder, fi (folder.path)}
         <div class="row" class:cursor={focused && session.navCursor === rowIndex(fi)}>
           <button class="drill" title={folder.path}
             onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}>
-            <span class="icon"></span>
+            <span class="nf icon">{I.folder}</span>
             <span class="name">{folder.name}</span>
             {#if folder.subfolderCount > 0}<span class="sub">{folder.subfolderCount}▸</span>{/if}
             <span class="count">({folder.mediaCount})</span>
           </button>
           <div class="acts">
-            <button class="act move" title="Move file here (Enter)" disabled={!session.current}
-              onclick={() => session.moveInto(folder)}>→</button>
-            <button class="act copy" title="Copy file here (Shift+D)" disabled={!session.current}
-              onclick={() => session.copyInto(folder)}>⧉</button>
+            <button class="act move nf" title="Move file here (Enter)" disabled={!session.current}
+              onclick={() => session.moveInto(folder)}>{I.arrowRight}</button>
+            <button class="act copy nf" title="Copy file here (Shift+D)" disabled={!session.current}
+              onclick={() => session.copyInto(folder)}>{I.copy}</button>
           </div>
         </div>
       {/each}
       {#if creating}
         <div class="row creating">
-          <span class="icon"></span>
+          <span class="nf icon">{I.folder}</span>
           <input bind:this={inputEl} bind:value={newName} placeholder="new folder name…"
             onkeydown={onCreateKey} onblur={commitCreate} />
         </div>

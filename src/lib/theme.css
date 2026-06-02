@@ -36,6 +36,23 @@
   color-scheme: dark;
 }
 
+/* Nerd Font icon glyphs (bundled symbols-only font). Use via the `.nf` class
+   with codepoints from src/lib/icons.ts. */
+@font-face {
+  font-family: "NerdIcons";
+  src: url("/fonts/SymbolsNerdFontMono-Regular.ttf") format("truetype");
+  font-display: block;
+}
+.nf {
+  font-family: "NerdIcons";
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  display: inline-block;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
 * { box-sizing: border-box; }
 
 html, body {

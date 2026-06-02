@@ -1,6 +1,7 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
   import { humanSize, extOf } from "$lib/api";
+  import { kindIcon } from "$lib/icons";
   import { convertFileSrc } from "@tauri-apps/api/core";
 
   const item = $derived(session.current);
@@ -11,7 +12,9 @@
 
 <section class="pane">
   <div class="bar">
-    <span class="name" title={item?.fileName ?? ""}>{item?.fileName ?? "—"}</span>
+    <span class="name" title={item?.fileName ?? ""}>
+      {#if item}<span class="nf kind">{kindIcon(item.kind)}</span>{/if}{item?.fileName ?? "—"}
+    </span>
     {#if item}
       <span class="meta">
         <span class="chip ext-{ext || 'other'}">{ext.toUpperCase() || "?"}</span>
@@ -64,6 +67,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+  .name .kind { margin-right: 7px; font-size: 12px; opacity: 0.8; color: var(--purple); }
   .meta {
     display: inline-flex;
     align-items: center;
