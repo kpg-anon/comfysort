@@ -68,6 +68,13 @@
       return;
     }
 
+    // --- Global: fuzzy search (focuses the Navigator + opens search) ---
+    if (e.key === "/") {
+      e.preventDefault();
+      session.startSearch();
+      return;
+    }
+
     // --- Pane-routed navigation ---
     if (session.focus === "navigator") navigatorKey(e);
     else inboxKey(e);
@@ -111,10 +118,6 @@
 
   function navigatorKey(e: KeyboardEvent) {
     switch (e.key) {
-      case "/":
-        e.preventDefault();
-        session.startSearch();
-        break;
       case "ArrowDown":
       case "j":
         e.preventDefault();

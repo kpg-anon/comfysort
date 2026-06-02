@@ -9,7 +9,7 @@
     ["⇧1-9", "copy"],
     ["s", "sort"],
     ["f", "filter"],
-    ["^r", "order"],
+    ["/", "search"],
     ["u", "undo"],
   ];
   const navChips: [string, string][] = [

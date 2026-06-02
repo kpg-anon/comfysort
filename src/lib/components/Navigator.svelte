@@ -67,11 +67,14 @@
 <section class="pane" class:focused>
   <div class="head">
     <div class="title">「 Navigator{focused ? " *" : ""} 」</div>
-    {#if session.searching}
-      <button class="new nf" title="Close search (Esc)" onclick={() => session.exitSearch()}>{I.close}</button>
-    {:else}
-      <button class="new nf" title="New folder here" onclick={startCreate}>{I.plus}</button>
-    {/if}
+    <div class="actions">
+      {#if session.searching}
+        <button class="hbtn nf" title="Close search (Esc)" onclick={() => session.exitSearch()}>{I.close}</button>
+      {:else}
+        <button class="hbtn nf" title="Fuzzy search folders (/)" onclick={() => session.startSearch()}>{I.search}</button>
+        <button class="hbtn nf" title="New folder here" onclick={startCreate}>{I.plus}</button>
+      {/if}
+    </div>
   </div>
 
   {#if session.searching}
@@ -168,11 +171,12 @@
   .head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 2px 12px; }
   .title { color: var(--text-primary); font-weight: 600; }
   .focused .title { color: var(--purple); }
-  .new {
-    border: 1px solid var(--border); background: var(--bg-chip); color: var(--green);
-    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 14px; line-height: 1;
+  .actions { display: flex; gap: 6px; }
+  .hbtn {
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-secondary);
+    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 12px; line-height: 1;
   }
-  .new:hover { border-color: var(--green); }
+  .hbtn:hover { border-color: var(--purple); color: var(--purple); }
   .crumbs {
     display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
     padding: 2px 12px 6px; border-bottom: 1px solid var(--border-muted);
