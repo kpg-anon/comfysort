@@ -95,7 +95,15 @@ export const api = {
 
   wouldCrossVolume: (source: string, destDir: string): Promise<boolean> =>
     invoke("would_cross_volume", { source, destDir }),
+
+  diskSpace: (path: string): Promise<DiskSpace | null> =>
+    invoke("disk_space", { path }),
 };
+
+export interface DiskSpace {
+  freeBytes: number;
+  totalBytes: number;
+}
 
 /** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */
 export function volumeLabel(path: string): string {

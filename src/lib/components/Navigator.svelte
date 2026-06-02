@@ -2,7 +2,6 @@
   import { session } from "$lib/session.svelte";
   import { I } from "$lib/icons";
 
-  let creating = $state(false);
   let newName = $state("");
   let inputEl: HTMLInputElement | undefined = $state();
   let searchEl: HTMLInputElement | undefined = $state();
@@ -28,6 +27,13 @@
   $effect(() => {
     if (session.searching) queueMicrotask(() => searchEl?.focus());
   });
+  // Focus the new-folder input when the prompt opens (＋ button or Ctrl+N).
+  $effect(() => {
+    if (session.creatingFolder) {
+      newName = "";
+      queueMicrotask(() => inputEl?.focus());
+    }
+  });
   // Scroll the keyboard cursor row into view (tree or search).
   $effect(() => {
     const _ = session.navCursor + session.searchCursor;
@@ -37,27 +43,31 @@
   function rowIndex(folderIdx: number): number {
     return (hasParent ? 1 : 0) + folderIdx;
   }
-  function startCreate() {
-    creating = true;
-    newName = "";
-    queueMicrotask(() => inputEl?.focus());
-  }
   async function commitCreate() {
     const name = newName.trim();
-    if (name) await session.createFolderHere(name);
-    creating = false;
     newName = "";
+    if (name) await session.createFolderHere(name);
+    else session.cancelNewFolder();
   }
   function onCreateKey(e: KeyboardEvent) {
     e.stopPropagation();
     if (e.key === "Enter") commitCreate();
-    else if (e.key === "Escape") { creating = false; newName = ""; }
+    else if (e.key === "Escape") { session.cancelNewFolder(); newName = ""; }
   }
   function onSearchKey(e: KeyboardEvent) {
     e.stopPropagation();
+    const el = e.currentTarget as HTMLInputElement;
     switch (e.key) {
       case "ArrowDown": e.preventDefault(); session.searchDown(); break;
       case "ArrowUp": e.preventDefault(); session.searchUp(); break;
+      case "ArrowRight":
+        // → drills into the highlighted match — but only when the caret is at
+        // the end of the query, so mid-text editing still moves the cursor.
+        if (el.selectionStart === el.value.length && el.selectionEnd === el.value.length) {
+          e.preventDefault();
+          session.searchDrill();
+        }
+        break;
       case "Enter": e.preventDefault(); session.searchMove(); break;
       case "Escape": e.preventDefault(); session.exitSearch(); break;
     }
@@ -72,7 +82,7 @@
         <button class="hbtn nf" title="Close search (Esc)" onclick={() => session.exitSearch()}>{I.close}</button>
       {:else}
         <button class="hbtn nf" title="Fuzzy search folders (/)" onclick={() => session.startSearch()}>{I.search}</button>
-        <button class="hbtn nf" title="New folder here" onclick={startCreate}>{I.plus}</button>
+        <button class="hbtn nf" title="New folder here (Ctrl+N)" onclick={() => session.startNewFolder()}>{I.plus}</button>
       {/if}
     </div>
   </div>
@@ -147,14 +157,14 @@
           </div>
         </div>
       {/each}
-      {#if creating}
+      {#if session.creatingFolder}
         <div class="row creating">
           <span class="nf icon">{I.folder}</span>
           <input bind:this={inputEl} bind:value={newName} placeholder="new folder name…"
             onkeydown={onCreateKey} onblur={commitCreate} />
         </div>
       {/if}
-      {#if (session.nav?.folders.length ?? 0) === 0 && !creating && !hasParent}
+      {#if (session.nav?.folders.length ?? 0) === 0 && !session.creatingFolder && !hasParent}
         <div class="empty">No subfolders here. Use ＋ to make one, or / to search.</div>
       {/if}
     {/if}

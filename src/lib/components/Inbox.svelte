@@ -29,7 +29,7 @@
         class="row"
         class:active={i === session.cursor}
         class:selected={session.isSelected(item.path)}
-        onclick={() => { session.focusInbox(); session.select(i); }}
+        onclick={(e) => session.clickRow(i, e.shiftKey)}
       >
         <span class="cursor">{i === session.cursor ? "›" : session.isSelected(item.path) ? "∗" : ""}</span>
         <span class="name" title={item.fileName}>

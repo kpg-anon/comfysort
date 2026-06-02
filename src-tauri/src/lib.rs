@@ -23,6 +23,7 @@ pub fn run() {
             commands::bind_folder,
             commands::unbind_hotkey,
             commands::would_cross_volume,
+            commands::disk_space,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -70,6 +70,13 @@ class SessionStore {
   allowCrossDevice = $state(false);
   crossPrompt = $state<CrossPrompt | null>(null);
 
+  // Inline new-folder prompt, driven by the + button or Ctrl+N.
+  creatingFolder = $state(false);
+
+  // Free/total bytes on the output volume (footer readout).
+  diskFree = $state<number | null>(null);
+  diskTotal = $state<number | null>(null);
+
   view = $derived.by<MediaItem[]>(() => {
     let items = this.allItems;
     if (this.filter !== "all") {
@@ -143,6 +150,26 @@ class SessionStore {
     this.cursor = 0;
     this.clearSelection();
   }
+  bottom() {
+    this.cursor = Math.max(0, this.view.length - 1);
+    this.clearSelection();
+  }
+  /** Click a row: plain click selects one; Shift+click selects the range from
+   *  the anchor (last single selection / cursor) to the clicked row. */
+  clickRow(i: number, shift: boolean) {
+    this.focusInbox();
+    if (shift) this.selectRangeTo(i);
+    else this.select(i);
+  }
+  private selectRangeTo(i: number) {
+    if (i < 0 || i >= this.view.length) return;
+    const anchor = this.selectionAnchor ?? this.cursor;
+    this.selectionAnchor = anchor;
+    this.cursor = i;
+    const lo = Math.min(anchor, i);
+    const hi = Math.max(anchor, i);
+    this.selectedPaths = new Set(this.view.slice(lo, hi + 1).map((x) => x.path));
+  }
   clearSelection() {
     if (this.selectedPaths.size) this.selectedPaths = new Set();
     this.selectionAnchor = null;
@@ -208,7 +235,9 @@ class SessionStore {
       this.focus = "inbox";
       this.clearSelection();
       this.exitSearch();
+      this.creatingFolder = false;
       await this.loadFolders(view.output);
+      this.fetchDisk();
       this.setStatus(`${view.inbox.length} items to sort`, "info");
     } catch (e) {
       this.error = String(e);
@@ -379,7 +408,17 @@ class SessionStore {
   async copyInto(folder: FolderEntry) {
     await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
   }
+  /** Open the inline new-folder prompt (＋ button or Ctrl+N). */
+  startNewFolder() {
+    this.exitSearch();
+    this.focusNavigator();
+    this.creatingFolder = true;
+  }
+  cancelNewFolder() {
+    this.creatingFolder = false;
+  }
   async createFolderHere(name: string) {
+    this.creatingFolder = false;
     if (!this.nav || !name.trim()) return;
     try {
       await api.createFolder(this.nav.path, name.trim());
@@ -388,6 +427,14 @@ class SessionStore {
     } catch (e) {
       this.setStatus(String(e), "bad");
     }
+  }
+
+  /** Refresh the footer disk readout for the output volume. */
+  async fetchDisk() {
+    if (!this.output) return;
+    const info = await api.diskSpace(this.output);
+    this.diskFree = info?.freeBytes ?? null;
+    this.diskTotal = info?.totalBytes ?? null;
   }
   async deleteHighlightedFolder() {
     const folder = this.navHighlighted;
@@ -465,6 +512,7 @@ class SessionStore {
       this.applyOutcome(out);
       this.setStatus(out.message, kindToStatus(out.kind));
       if (this.nav) await this.loadFolders(this.nav.path);
+      this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
     } finally {
@@ -494,6 +542,7 @@ class SessionStore {
       }
       if (clearSel) this.clearSelection();
       if (this.nav) await this.loadFolders(this.nav.path);
+      this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
     } finally {

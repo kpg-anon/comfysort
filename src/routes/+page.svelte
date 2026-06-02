@@ -84,6 +84,13 @@
       return;
     }
 
+    // --- Global: new folder in the current Navigator directory (Ctrl+N) ---
+    if (e.ctrlKey && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      session.startNewFolder();
+      return;
+    }
+
     // --- Pane-routed navigation ---
     if (session.focus === "navigator") navigatorKey(e);
     else inboxKey(e);
@@ -100,7 +107,8 @@
       case "ArrowDown":
       case "j":
         e.preventDefault();
-        session.next();
+        if (e.altKey) session.bottom();
+        else session.next();
         break;
       case "ArrowUp":
       case "k":

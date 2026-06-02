@@ -6,10 +6,32 @@ use comfysort_engine::domain::{
     DestinationDto, FolderEntry, FolderListing, OpOutcome, SessionView,
 };
 use comfysort_engine::session::Session;
+use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
+
+/// Free + total bytes on the volume holding a path (for the footer readout).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiskSpace {
+    pub free_bytes: u64,
+    pub total_bytes: u64,
+}
+
+/// Disk space for the volume containing `path`. Returns `None` if the path
+/// can't be queried (e.g. an unmapped drive), so the UI just hides the readout.
+#[tauri::command]
+pub fn disk_space(path: String) -> Option<DiskSpace> {
+    let p = std::path::Path::new(&path);
+    let free = fs2::available_space(p).ok()?;
+    let total = fs2::total_space(p).ok()?;
+    Some(DiskSpace {
+        free_bytes: free,
+        total_bytes: total,
+    })
+}
 
 /// Managed application state. `None` until a session is opened.
 #[derive(Default)]
