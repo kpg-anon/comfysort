@@ -96,6 +96,7 @@ class SessionStore {
   diskTotal = $state<number | null>(null);
   #lastDisk = 0; // throttle timestamp for fetchDisk
   #navRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  #navStickyPath: string | null = null; // folder to re-highlight after a refresh
 
   // Right-click context menu on an inbox item.
   ctx = $state<{ x: number; y: number; item: MediaItem } | null>(null);
@@ -454,13 +455,24 @@ class SessionStore {
 
   /** Debounced refresh of the current Navigator dir after operations. Over a
    *  remote output tree, re-listing + counting on every op is costly, so we
-   *  coalesce bursts into one refresh and preserve the cursor position. */
+   *  coalesce bursts into one refresh. The highlight follows a "sticky" folder
+   *  by path (set when moving/copying into one) so it stays selected even after
+   *  its count bumps and the count-desc sort reorders the list; otherwise the
+   *  cursor index is preserved. */
   private scheduleNavRefresh() {
     if (!this.nav) return;
     if (this.#navRefreshTimer != null) clearTimeout(this.#navRefreshTimer);
-    this.#navRefreshTimer = setTimeout(() => {
+    this.#navRefreshTimer = setTimeout(async () => {
       this.#navRefreshTimer = null;
-      if (this.nav) this.loadFolders(this.nav.path, true);
+      if (!this.nav) return;
+      const sticky = this.#navStickyPath;
+      this.#navStickyPath = null;
+      await this.loadFolders(this.nav.path, true);
+      if (sticky && this.nav) {
+        const t = normPath(sticky);
+        const i = this.nav.folders.findIndex((f) => normPath(f.path) === t);
+        if (i >= 0) this.navCursor = (this.navHasParent ? 1 : 0) + i;
+      }
     }, 600);
   }
   navDown() {
@@ -487,17 +499,21 @@ class SessionStore {
     const folder = this.navOnParent ? null : this.navHighlighted;
     const target = this.navOnParent ? this.nav?.path : folder?.path;
     if (!target) return;
+    if (folder) this.#navStickyPath = folder.path; // keep this folder selected after re-sort
     await this.moveTargetsTo(target, folder?.name);
   }
   async navCopy() {
-    const target = this.navHighlighted?.path;
-    if (!target) return;
-    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, target), false);
+    const folder = this.navHighlighted;
+    if (!folder) return;
+    this.#navStickyPath = folder.path;
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
   }
   async moveInto(folder: FolderEntry) {
+    this.#navStickyPath = folder.path;
     await this.moveTargetsTo(folder.path, folder.name);
   }
   async copyInto(folder: FolderEntry) {
+    this.#navStickyPath = folder.path;
     await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
   }
   /** Open the inline new-folder prompt (＋ button or Ctrl+N). */

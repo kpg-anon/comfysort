@@ -34,7 +34,7 @@ pub struct DiskSpace {
 /// Disk space for the volume containing `path`. Returns `None` if the path
 /// can't be queried (e.g. an unmapped drive), so the UI just hides the readout.
 #[tauri::command]
-pub fn disk_space(path: String) -> Option<DiskSpace> {
+pub async fn disk_space(path: String) -> Option<DiskSpace> {
     let p = std::path::Path::new(&path);
     let free = fs2::available_space(p).ok()?;
     let total = fs2::total_space(p).ok()?;
@@ -96,7 +96,7 @@ pub fn open_session(
 }
 
 #[tauri::command]
-pub fn move_item(
+pub async fn move_item(
     state: State<'_, AppState>,
     source: String,
     dest_dir: String,
@@ -107,7 +107,7 @@ pub fn move_item(
 }
 
 #[tauri::command]
-pub fn copy_item(
+pub async fn copy_item(
     state: State<'_, AppState>,
     source: String,
     dest_dir: String,
@@ -118,7 +118,7 @@ pub fn copy_item(
 }
 
 #[tauri::command]
-pub fn move_to_hotkey(
+pub async fn move_to_hotkey(
     state: State<'_, AppState>,
     source: String,
     hotkey: String,
@@ -136,12 +136,12 @@ pub fn move_to_hotkey(
 }
 
 #[tauri::command]
-pub fn trash_item(state: State<'_, AppState>, source: String) -> CmdResult<OpOutcome> {
+pub async fn trash_item(state: State<'_, AppState>, source: String) -> CmdResult<OpOutcome> {
     with_session(&state, |s| s.trash_item(&PathBuf::from(&source)))
 }
 
 #[tauri::command]
-pub fn create_folder(
+pub async fn create_folder(
     state: State<'_, AppState>,
     parent: String,
     name: String,
@@ -152,29 +152,29 @@ pub fn create_folder(
 }
 
 #[tauri::command]
-pub fn undo(state: State<'_, AppState>) -> CmdResult<OpOutcome> {
+pub async fn undo(state: State<'_, AppState>) -> CmdResult<OpOutcome> {
     with_session(&state, |s| s.undo())
 }
 
 #[tauri::command]
-pub fn list_folders(state: State<'_, AppState>, path: String) -> CmdResult<FolderListing> {
+pub async fn list_folders(state: State<'_, AppState>, path: String) -> CmdResult<FolderListing> {
     with_session(&state, |s| s.list_folders(&PathBuf::from(&path)))
 }
 
 /// Re-scan the input directory (e.g. after external changes) and return the
 /// fresh inbox. Destinations are left untouched.
 #[tauri::command]
-pub fn rescan_inbox(state: State<'_, AppState>) -> CmdResult<Vec<MediaItemDto>> {
+pub async fn rescan_inbox(state: State<'_, AppState>) -> CmdResult<Vec<MediaItemDto>> {
     with_session(&state, |s| s.rescan_inbox())
 }
 
 #[tauri::command]
-pub fn delete_folder(state: State<'_, AppState>, path: String) -> CmdResult<OpOutcome> {
+pub async fn delete_folder(state: State<'_, AppState>, path: String) -> CmdResult<OpOutcome> {
     with_session(&state, |s| s.delete_folder(&PathBuf::from(&path)))
 }
 
 #[tauri::command]
-pub fn search_folders(
+pub async fn search_folders(
     state: State<'_, AppState>,
     query: String,
 ) -> CmdResult<Vec<FolderEntry>> {
@@ -184,7 +184,7 @@ pub fn search_folders(
 /// Bind a folder (under the output subtree) to a single-char hotkey. Persists
 /// the binding and returns the refreshed destination list.
 #[tauri::command]
-pub fn bind_folder(
+pub async fn bind_folder(
     state: State<'_, AppState>,
     path: String,
     hotkey: String,
@@ -198,7 +198,7 @@ pub fn bind_folder(
 
 /// Clear a hotkey binding and return the refreshed destination list.
 #[tauri::command]
-pub fn unbind_hotkey(
+pub async fn unbind_hotkey(
     state: State<'_, AppState>,
     hotkey: String,
 ) -> CmdResult<Vec<DestinationDto>> {
