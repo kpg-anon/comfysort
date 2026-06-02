@@ -35,10 +35,10 @@
 <section class="pane" class:focused>
   <div class="title">
     <span>「 Inbox{focused ? " *" : ""} 」</span>
-    <span class="modes">sort {session.sortField}{arrow} · filter {session.filter}</span>
+    <span class="modes">sort <span class="vsort">{session.sortField}{arrow}</span> · filter <span class="vfilter">{session.filter}</span></span>
   </div>
   <div class="cols">
-    <span>Name</span><span class="r">Size</span><span class="r">Type</span>
+    <span></span><span>Name</span><span class="r">Size</span><span class="c">Type</span>
   </div>
   <div
     class="list"
@@ -63,7 +63,7 @@
               <span class="nm">{item.fileName}</span>
             </span>
             <span class="r size">{humanSize(item.sizeBytes)}</span>
-            <span class="r"><span class="chip ext-{extOf(item.fileName) || 'other'}"
+            <span class="c"><span class="chip ext-chip ext-{extOf(item.fileName) || 'other'}"
               >{extOf(item.fileName).toUpperCase() || "?"}</span></span>
           </button>
         {/each}
@@ -95,23 +95,32 @@
   }
   .title > span:first-child { color: var(--purple); }
   .modes { font-size: 10.5px; font-weight: 400; color: var(--text-muted); font-family: var(--mono); }
+  .modes .vsort { color: var(--yellow); }
+  .modes .vfilter { color: var(--cyan); }
+  /* Header columns share the exact grid + effective padding as the rows so
+     Name/Size/Type sit directly above their columns. Size/Type are fixed-width
+     (not auto) so the header labels line up with the row values. */
   .cols {
-    display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px;
-    padding: 2px 12px 6px; color: var(--text-muted); font-size: 11px;
+    display: grid; grid-template-columns: 11px 1fr 62px 50px; gap: 6px;
+    padding: 2px 11px 6px; color: var(--text-muted); font-size: 11px;
     border-bottom: 1px solid var(--border-muted);
   }
   .cols .r { text-align: right; }
-  .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px; position: relative; }
+  .cols .c { text-align: center; }
+  .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 5px; position: relative; }
   .viewport { position: relative; width: 100%; }
   .row {
     position: absolute;
     left: 0; right: 0;
     height: 26px;
-    display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center;
+    display: grid; grid-template-columns: 11px 1fr 62px 50px; gap: 6px; align-items: center;
     border: none; background: transparent; color: var(--text-secondary);
     text-align: left; padding: 0 6px; border-radius: var(--radius-sm);
     cursor: pointer; font-size: 12.5px;
   }
+  .row .c { display: flex; align-items: center; justify-content: center; }
+  /* Uniform-width extension chips so WEBM/WEBP don't read larger than JPG/MP4. */
+  .ext-chip { min-width: 40px; justify-content: center; }
   .row:hover { background: var(--bg-panel-alt); }
   .row.selected { background: var(--bg-selected-active); color: var(--text-primary); }
   .row.active { background: var(--bg-selected); color: var(--text-primary); }

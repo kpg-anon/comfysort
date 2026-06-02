@@ -21,6 +21,7 @@ export const I = {
   drive: "", // nf-fa-hdd_o
   inbox: "", // nf-fa-inbox
   cog: "", // nf-fa-cog
+  warn: "", // nf-fa-exclamation_triangle
 } as const;
 
 export function kindIcon(kind: MediaKind): string {

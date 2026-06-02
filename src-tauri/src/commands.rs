@@ -62,15 +62,22 @@ fn with_session<T>(
     f(session).map_err(|e| e.to_string())
 }
 
-/// Open a native folder-picker. Blocking variant so we can return the choice.
+/// Open a native folder-picker. Async + non-blocking: the blocking variant runs
+/// on the main thread and freezes the window (white title bar) while the dialog
+/// is open, so we use the callback API and await the result over a channel.
 #[tauri::command]
-pub fn pick_directory(app: tauri::AppHandle, title: Option<String>) -> Option<String> {
+pub async fn pick_directory(app: tauri::AppHandle, title: Option<String>) -> Option<String> {
+    let (tx, mut rx) = tauri::async_runtime::channel(1);
     let mut builder = app.dialog().file();
     if let Some(title) = title {
         builder = builder.set_title(title);
     }
-    builder
-        .blocking_pick_folder()
+    builder.pick_folder(move |path| {
+        let _ = tx.blocking_send(path);
+    });
+    rx.recv()
+        .await
+        .flatten()
         .and_then(|p| p.into_path().ok())
         .map(|p| p.to_string_lossy().into_owned())
 }

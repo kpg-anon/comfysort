@@ -11,6 +11,7 @@
   import StartScreen from "$lib/components/StartScreen.svelte";
   import Settings from "$lib/components/Settings.svelte";
   import { settings } from "$lib/settings.svelte";
+  import { I } from "$lib/icons";
 
   const open = $derived(session.input !== null && session.output !== null);
 
@@ -216,17 +217,22 @@
   {#if session.crossPrompt}
     <div class="modal-scrim">
       <div class="modal">
-        <div class="mtitle">Cross-drive move</div>
-        <p>
-          Moving {session.crossPrompt.count}
-          {session.crossPrompt.count === 1 ? "file" : "files"} from
-          <b>{session.crossPrompt.sourceVolume}</b> into
-          <b>{session.crossPrompt.destLabel}</b> copies across drives, then removes
-          the source. This is slower than a same-drive move.
+        <div class="mhead">
+          <span class="micon nf">{I.warn}</span>
+          <div class="mheadtext">
+            <div class="mtitle">Cross-drive move</div>
+            <div class="msub">Copies across drives, then removes the source — slower than a same-drive move.</div>
+          </div>
+        </div>
+        <p class="mbody">
+          Move <b>{session.crossPrompt.count}
+          {session.crossPrompt.count === 1 ? "file" : "files"}</b> from
+          <b class="vol">{session.crossPrompt.sourceVolume}</b> into
+          <b class="dest">{session.crossPrompt.destLabel}</b>?
         </p>
         <div class="mrow">
           <button class="mbtn go" onclick={() => session.resolveCross("once")}><kbd>y</kbd> Move once</button>
-          <button class="mbtn" onclick={() => session.resolveCross("always")}><kbd>a</kbd> Always this session</button>
+          <button class="mbtn always" onclick={() => session.resolveCross("always")}><kbd>a</kbd> Always this session</button>
           <button class="mbtn cancel" onclick={() => session.resolveCross("cancel")}><kbd>n</kbd> Cancel</button>
         </div>
       </div>
@@ -259,22 +265,38 @@
   .modal-scrim {
     position: fixed;
     inset: 0;
-    background: rgba(8, 10, 13, 0.6);
+    background: rgba(8, 10, 13, 0.62);
     display: grid;
     place-items: center;
     z-index: 50;
+    animation: mfade 0.12s ease-out;
   }
   .modal {
-    width: 440px;
+    width: 460px;
     background: var(--bg-panel);
-    border: 1px solid var(--orange);
-    border-radius: 10px;
-    padding: 20px 22px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--orange);
+    border-radius: 12px;
+    padding: 20px 22px 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    animation: mpop 0.13s ease-out;
   }
-  .mtitle { color: var(--orange); font-weight: 700; margin-bottom: 8px; }
-  .modal p { color: var(--text-secondary); font-size: 12.5px; margin: 0 0 16px; line-height: 1.5; }
-  .modal b { color: var(--text-primary); }
+  @keyframes mfade { from { opacity: 0; } }
+  @keyframes mpop { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+  .mhead { display: flex; gap: 13px; align-items: flex-start; margin-bottom: 14px; }
+  .micon {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    display: grid; place-items: center; font-size: 16px;
+    color: var(--orange);
+    background: color-mix(in srgb, var(--orange) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--orange) 35%, var(--border));
+  }
+  .mtitle { color: var(--text-primary); font-weight: 700; font-size: 14px; }
+  .msub { color: var(--text-muted); font-size: 11.5px; margin-top: 2px; line-height: 1.4; }
+  .mbody { color: var(--text-secondary); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  .mbody b { color: var(--text-primary); }
+  .mbody .vol { color: var(--orange); }
+  .mbody .dest { color: var(--green); }
   .mrow { display: flex; gap: 8px; }
   .mbtn {
     flex: 1;
@@ -290,8 +312,11 @@
     cursor: pointer;
     font-size: 12px;
   }
-  .mbtn:hover { border-color: var(--text-muted); }
-  .mbtn.go { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, var(--border)); }
+  .mbtn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+  .mbtn.go { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, var(--border)); }
+  .mbtn.go:hover { border-color: var(--green); }
+  .mbtn.always { color: var(--orange); }
+  .mbtn.always:hover { border-color: var(--orange); }
   .mbtn.cancel { color: var(--text-muted); }
   .mbtn kbd {
     font-family: var(--mono);

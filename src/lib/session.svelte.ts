@@ -38,6 +38,17 @@ export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
 // `numeric` gives natural ordering (file2 before file10).
 const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
+/** Parent directory of a path (handles `\` and `/`), or null at a root. */
+function parentOf(path: string): string | null {
+  const norm = path.replace(/[\\/]+$/, "");
+  const i = Math.max(norm.lastIndexOf("/"), norm.lastIndexOf("\\"));
+  return i > 0 ? norm.slice(0, i) : null;
+}
+/** Normalize a path for comparison (forward slashes, no trailing slash, lower). */
+function normPath(p: string): string {
+  return p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
 class SessionStore {
   input = $state<string | null>(null);
   output = $state<string | null>(null);
@@ -521,11 +532,16 @@ class SessionStore {
   get searchSelected(): FolderEntry | null {
     return this.searchResults[this.searchCursor] ?? null;
   }
-  /** Enter in search: move current file(s) into the highlighted match. */
+  /** Enter in search: move current file(s) into the highlighted match, then
+   *  leave search and browse the match's parent with the match highlighted, so
+   *  repeated Enter moves into the same folder (mirrors the TUI). */
   async searchMove() {
     const match = this.searchSelected;
     if (!match) return;
     await this.moveTargetsTo(match.path, match.name);
+    if (this.crossPrompt) return; // deferred for confirmation; skip the nav jump
+    this.exitSearch();
+    await this.focusFolderInParent(match.path);
   }
   /** Drill into the highlighted search match and leave search mode. */
   async searchDrill(folder?: FolderEntry) {
@@ -533,6 +549,15 @@ class SessionStore {
     if (!target) return;
     this.exitSearch();
     await this.loadFolders(target.path);
+  }
+  /** Browse the parent of `folderPath` with that folder highlighted. */
+  private async focusFolderInParent(folderPath: string) {
+    const parent = parentOf(folderPath);
+    if (!parent) return;
+    await this.loadFolders(parent);
+    const target = normPath(folderPath);
+    const idx = this.nav?.folders.findIndex((f) => normPath(f.path) === target) ?? -1;
+    if (idx >= 0) this.navCursor = (this.navHasParent ? 1 : 0) + idx;
   }
 
   // ---- Internal ------------------------------------------------------------
