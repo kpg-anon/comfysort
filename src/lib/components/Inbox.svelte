@@ -27,9 +27,10 @@
       <button
         class="row"
         class:active={i === session.cursor}
+        class:selected={session.isSelected(item.path)}
         onclick={() => { session.focusInbox(); session.select(i); }}
       >
-        <span class="cursor">{i === session.cursor ? "›" : ""}</span>
+        <span class="cursor">{i === session.cursor ? "›" : session.isSelected(item.path) ? "∗" : ""}</span>
         <span class="name" title={item.fileName}>{item.fileName}</span>
         <span class="r size">{humanSize(item.sizeBytes)}</span>
         <span class="r"><span class="chip ext-{extOf(item.fileName) || 'other'}"
@@ -45,7 +46,7 @@
     {/if}
   </div>
   <div class="footer">
-    <span>{session.total} items</span>
+    <span>{session.selectedPaths.size ? `${session.selectedPaths.size} selected · ` : ""}{session.total} items</span>
     <span>{humanSize(session.viewBytes)}</span>
   </div>
 </section>
@@ -99,9 +100,11 @@
     font-size: 12.5px;
   }
   .row:hover { background: var(--bg-panel-alt); }
+  .row.selected { background: var(--bg-selected-active); color: var(--text-primary); }
   .row.active { background: var(--bg-selected); color: var(--text-primary); }
   .focused .row.active { box-shadow: inset 2px 0 0 var(--green); }
   .cursor { color: var(--green); font-weight: 700; }
+  .row.selected .cursor { color: var(--purple); }
   .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .r { text-align: right; }
   .size { color: var(--text-muted); font-variant-numeric: tabular-nums; }

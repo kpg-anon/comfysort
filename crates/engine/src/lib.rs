@@ -10,5 +10,6 @@ pub mod domain;
 pub mod logging;
 pub mod media;
 pub mod operations;
+pub mod persistence;
 pub mod search;
 pub mod session;

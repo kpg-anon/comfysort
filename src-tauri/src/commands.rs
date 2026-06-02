@@ -133,3 +133,41 @@ pub fn search_folders(
 ) -> CmdResult<Vec<FolderEntry>> {
     with_session(&state, |s| Ok(s.search_folders(&query)))
 }
+
+/// Bind a folder (under the output subtree) to a single-char hotkey. Persists
+/// the binding and returns the refreshed destination list.
+#[tauri::command]
+pub fn bind_folder(
+    state: State<'_, AppState>,
+    path: String,
+    hotkey: String,
+) -> CmdResult<Vec<DestinationDto>> {
+    let key = hotkey
+        .chars()
+        .next()
+        .ok_or_else(|| "hotkey is empty".to_string())?;
+    with_session(&state, |s| s.bind_folder(&PathBuf::from(&path), key))
+}
+
+/// Clear a hotkey binding and return the refreshed destination list.
+#[tauri::command]
+pub fn unbind_hotkey(
+    state: State<'_, AppState>,
+    hotkey: String,
+) -> CmdResult<Vec<DestinationDto>> {
+    let key = hotkey
+        .chars()
+        .next()
+        .ok_or_else(|| "hotkey is empty".to_string())?;
+    with_session(&state, |s| s.unbind_hotkey(key))
+}
+
+/// Whether moving `source` into `dest_dir` would cross a volume boundary, so
+/// the frontend can show a confirm modal before the move.
+#[tauri::command]
+pub fn would_cross_volume(source: String, dest_dir: String) -> bool {
+    comfysort_engine::operations::is_cross_volume(
+        &PathBuf::from(&source),
+        &PathBuf::from(&dest_dir),
+    )
+}

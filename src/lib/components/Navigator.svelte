@@ -4,12 +4,12 @@
   let creating = $state(false);
   let newName = $state("");
   let inputEl: HTMLInputElement | undefined = $state();
+  let searchEl: HTMLInputElement | undefined = $state();
   let listEl: HTMLDivElement | undefined = $state();
 
   const focused = $derived(session.focus === "navigator");
   const hasParent = $derived(session.navHasParent);
 
-  // Breadcrumb segments with the path to jump to for each.
   const crumbs = $derived.by(() => {
     const root = session.output ?? "";
     const rel = session.nav?.rel ?? "";
@@ -17,16 +17,25 @@
     return segs.map((name, i) => ({ name, path: root + "/" + segs.slice(0, i + 1).join("/") }));
   });
 
-  // Scroll the keyboard cursor row into view.
+  function relOf(path: string): string {
+    const root = (session.output ?? "").replace(/\\/g, "/");
+    const p = path.replace(/\\/g, "/");
+    return p.startsWith(root) ? p.slice(root.length).replace(/^\/+/, "") : p;
+  }
+
+  // Focus the search box when search mode opens.
   $effect(() => {
-    const _ = session.navCursor;
-    if (focused) listEl?.querySelector(".row.cursor")?.scrollIntoView({ block: "nearest" });
+    if (session.searching) queueMicrotask(() => searchEl?.focus());
+  });
+  // Scroll the keyboard cursor row into view (tree or search).
+  $effect(() => {
+    const _ = session.navCursor + session.searchCursor;
+    listEl?.querySelector(".row.cursor")?.scrollIntoView({ block: "nearest" });
   });
 
   function rowIndex(folderIdx: number): number {
     return (hasParent ? 1 : 0) + folderIdx;
   }
-
   function startCreate() {
     creating = true;
     newName = "";
@@ -41,9 +50,15 @@
   function onCreateKey(e: KeyboardEvent) {
     e.stopPropagation();
     if (e.key === "Enter") commitCreate();
-    else if (e.key === "Escape") {
-      creating = false;
-      newName = "";
+    else if (e.key === "Escape") { creating = false; newName = ""; }
+  }
+  function onSearchKey(e: KeyboardEvent) {
+    e.stopPropagation();
+    switch (e.key) {
+      case "ArrowDown": e.preventDefault(); session.searchDown(); break;
+      case "ArrowUp": e.preventDefault(); session.searchUp(); break;
+      case "Enter": e.preventDefault(); session.searchMove(); break;
+      case "Escape": e.preventDefault(); session.exitSearch(); break;
     }
   }
 </script>
@@ -51,95 +66,131 @@
 <section class="pane" class:focused>
   <div class="head">
     <div class="title">「 Navigator{focused ? " *" : ""} 」</div>
-    <button class="new" title="New folder here (Ctrl+N)" onclick={startCreate}>＋</button>
+    {#if session.searching}
+      <button class="new" title="Close search (Esc)" onclick={() => session.exitSearch()}>×</button>
+    {:else}
+      <button class="new" title="New folder here" onclick={startCreate}>＋</button>
+    {/if}
   </div>
 
-  <div class="crumbs">
-    <button class="crumb root" onclick={() => session.navHome()}>./</button>
-    {#each crumbs as c}
-      <span class="sep">›</span>
-      <button class="crumb" onclick={() => session.loadFolders(c.path)}>{c.name}</button>
-    {/each}
-  </div>
+  {#if session.searching}
+    <div class="searchbar">
+      <span class="sicon">/</span>
+      <input
+        bind:this={searchEl}
+        value={session.searchQuery}
+        oninput={(e) => session.updateSearch(e.currentTarget.value)}
+        onkeydown={onSearchKey}
+        placeholder="fuzzy search folders…"
+      />
+    </div>
+  {:else}
+    <div class="crumbs">
+      <button class="crumb root" onclick={() => session.navHome()}>./</button>
+      {#each crumbs as c}
+        <span class="sep">›</span>
+        <button class="crumb" onclick={() => session.loadFolders(c.path)}>{c.name}</button>
+      {/each}
+    </div>
+  {/if}
 
   <div class="list" bind:this={listEl}>
-    {#if hasParent}
-      <button
-        class="row up"
-        class:cursor={focused && session.navCursor === 0}
-        onclick={() => { session.focusNavigator(); session.navAscend(); }}
-      >
-        <span class="icon">↩</span><span class="name">..</span>
-      </button>
-    {/if}
-
-    {#each session.nav?.folders ?? [] as folder, fi (folder.path)}
-      <div class="row" class:cursor={focused && session.navCursor === rowIndex(fi)}>
-        <button
-          class="drill"
-          title={folder.path}
-          onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}
-        >
-          <span class="icon"></span>
-          <span class="name">{folder.name}</span>
-          {#if folder.subfolderCount > 0}<span class="sub">{folder.subfolderCount}▸</span>{/if}
-          <span class="count">({folder.mediaCount})</span>
-        </button>
-        <div class="acts">
-          <button class="act move" title="Move file here (Enter)" disabled={!session.current}
-            onclick={() => session.moveInto(folder)}>→</button>
-          <button class="act copy" title="Copy file here (Shift+D)" disabled={!session.current}
-            onclick={() => session.copyInto(folder)}>⧉</button>
+    {#if session.searching}
+      {#each session.searchResults as r, i (r.path)}
+        <div class="row" class:cursor={i === session.searchCursor}>
+          <button class="drill" title={r.path} onclick={() => session.searchDrill(r)}>
+            <span class="icon"></span>
+            <span class="rname">
+              <span class="name">{r.name}</span>
+              <span class="rel">{relOf(r.path)}</span>
+            </span>
+            <span class="count">({r.mediaCount})</span>
+          </button>
+          <div class="acts">
+            <button class="act move" title="Move here (Enter)" disabled={!session.current}
+              onclick={() => session.moveInto(r)}>→</button>
+            <button class="act copy" title="Copy here" disabled={!session.current}
+              onclick={() => session.copyInto(r)}>⧉</button>
+          </div>
         </div>
-      </div>
-    {/each}
-
-    {#if creating}
-      <div class="row creating">
-        <span class="icon"></span>
-        <input bind:this={inputEl} bind:value={newName} placeholder="new folder name…"
-          onkeydown={onCreateKey} onblur={commitCreate} />
-      </div>
-    {/if}
-
-    {#if (session.nav?.folders.length ?? 0) === 0 && !creating && !hasParent}
-      <div class="empty">No subfolders here. Use ＋ to make one.</div>
+      {/each}
+      {#if session.searchQuery && session.searchResults.length === 0}
+        <div class="empty">No folders match “{session.searchQuery}”.</div>
+      {:else if !session.searchQuery}
+        <div class="empty">Type to fuzzy-search every folder under the root.</div>
+      {/if}
+    {:else}
+      {#if hasParent}
+        <button class="row up" class:cursor={focused && session.navCursor === 0}
+          onclick={() => { session.focusNavigator(); session.navAscend(); }}>
+          <span class="icon">↩</span><span class="name">..</span>
+        </button>
+      {/if}
+      {#each session.nav?.folders ?? [] as folder, fi (folder.path)}
+        <div class="row" class:cursor={focused && session.navCursor === rowIndex(fi)}>
+          <button class="drill" title={folder.path}
+            onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}>
+            <span class="icon"></span>
+            <span class="name">{folder.name}</span>
+            {#if folder.subfolderCount > 0}<span class="sub">{folder.subfolderCount}▸</span>{/if}
+            <span class="count">({folder.mediaCount})</span>
+          </button>
+          <div class="acts">
+            <button class="act move" title="Move file here (Enter)" disabled={!session.current}
+              onclick={() => session.moveInto(folder)}>→</button>
+            <button class="act copy" title="Copy file here (Shift+D)" disabled={!session.current}
+              onclick={() => session.copyInto(folder)}>⧉</button>
+          </div>
+        </div>
+      {/each}
+      {#if creating}
+        <div class="row creating">
+          <span class="icon"></span>
+          <input bind:this={inputEl} bind:value={newName} placeholder="new folder name…"
+            onkeydown={onCreateKey} onblur={commitCreate} />
+        </div>
+      {/if}
+      {#if (session.nav?.folders.length ?? 0) === 0 && !creating && !hasParent}
+        <div class="empty">No subfolders here. Use ＋ to make one, or / to search.</div>
+      {/if}
     {/if}
   </div>
 </section>
 
 <style>
   .pane {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
   }
   .pane.focused { border-color: var(--purple); }
   .head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 2px 12px; }
   .title { color: var(--text-primary); font-weight: 600; }
   .focused .title { color: var(--purple); }
   .new {
-    border: 1px solid var(--border);
-    background: var(--bg-chip);
-    color: var(--green);
-    border-radius: var(--radius-sm);
-    width: 22px; height: 22px; cursor: pointer; font-size: 14px; line-height: 1;
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--green);
+    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 14px; line-height: 1;
   }
   .new:hover { border-color: var(--green); }
   .crumbs {
     display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
-    padding: 2px 12px 6px;
-    border-bottom: 1px solid var(--border-muted);
+    padding: 2px 12px 6px; border-bottom: 1px solid var(--border-muted);
     font-family: var(--mono); font-size: 11px;
   }
   .crumb { border: none; background: transparent; color: var(--purple); cursor: pointer; padding: 1px 3px; border-radius: 3px; }
   .crumb:hover { background: var(--bg-panel-alt); }
   .crumb.root { color: var(--text-secondary); }
   .sep { color: var(--text-muted); }
+  .searchbar {
+    display: flex; align-items: center; gap: 6px; margin: 2px 10px 6px;
+    border-bottom: 1px solid var(--border-muted); padding-bottom: 6px;
+  }
+  .sicon { color: var(--purple); font-family: var(--mono); font-weight: 700; }
+  .searchbar input {
+    flex: 1; background: var(--bg-app); border: 1px solid var(--purple);
+    border-radius: var(--radius-sm); color: var(--text-primary); padding: 4px 8px;
+    font-size: 12.5px; outline: none;
+  }
   .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px; }
   .row { display: flex; align-items: center; border-radius: var(--radius-sm); }
   .row:hover { background: var(--bg-panel-alt); }
@@ -153,15 +204,17 @@
   .row:hover .drill { color: var(--text-primary); }
   .icon { color: var(--yellow); flex: none; width: 14px; text-align: center; }
   .up .icon { color: var(--text-muted); }
-  .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+  .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .rname { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .rname .name { flex: none; }
+  .rel { font-size: 10px; color: var(--text-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: var(--mono); }
   .sub { color: var(--text-muted); font-size: 10px; }
-  .count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .count { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: none; }
   .acts { display: flex; gap: 3px; padding-right: 5px; opacity: 0; }
   .row:hover .acts, .row.cursor .acts { opacity: 1; }
   .act {
     border: 1px solid var(--border); background: var(--bg-chip);
-    border-radius: var(--radius-sm); width: 22px; height: 22px;
-    cursor: pointer; font-size: 12px; line-height: 1;
+    border-radius: var(--radius-sm); width: 22px; height: 22px; cursor: pointer; font-size: 12px; line-height: 1;
   }
   .act.move { color: var(--green); }
   .act.move:hover:not(:disabled) { border-color: var(--green); }
@@ -171,8 +224,7 @@
   .creating input {
     flex: 1; margin: 3px 0; background: var(--bg-app);
     border: 1px solid var(--purple); border-radius: var(--radius-sm);
-    color: var(--text-primary); padding: 4px 7px;
-    font-family: var(--mono); font-size: 12px; outline: none;
+    color: var(--text-primary); padding: 4px 7px; font-family: var(--mono); font-size: 12px; outline: none;
   }
   .empty { padding: 16px 12px; color: var(--text-muted); text-align: center; font-size: 12px; }
 </style>

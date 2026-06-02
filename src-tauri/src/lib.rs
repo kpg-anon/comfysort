@@ -20,6 +20,9 @@ pub fn run() {
             commands::list_folders,
             commands::delete_folder,
             commands::search_folders,
+            commands::bind_folder,
+            commands::unbind_hotkey,
+            commands::would_cross_volume,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

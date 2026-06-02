@@ -280,6 +280,36 @@ fn is_cross_device_err(err: &std::io::Error) -> bool {
     }
 }
 
+/// Whether moving `a` into `b` would cross a volume boundary, by comparing the
+/// path prefixes (drive letter / UNC share). Lets the GUI show a confirm modal
+/// before a move, mirroring the TUI; the actual move still falls back to a safe
+/// copy→verify→delete on a cross-device error.
+pub fn is_cross_volume(a: &Path, b: &Path) -> bool {
+    fn prefix(path: &Path) -> Option<String> {
+        use std::path::Component;
+        match path.components().next() {
+            Some(Component::Prefix(component)) => {
+                Some(component.as_os_str().to_string_lossy().to_ascii_lowercase())
+            }
+            _ => None,
+        }
+    }
+    match (prefix(a), prefix(b)) {
+        (Some(left), Some(right)) => left != right,
+        _ => false,
+    }
+}
+
+/// The volume prefix of `path` for display (e.g. `X:` or `\\server\share`),
+/// falling back to a generic label when there's no recognizable prefix.
+pub fn volume_label(path: &Path) -> String {
+    use std::path::Component;
+    match path.components().next() {
+        Some(Component::Prefix(component)) => component.as_os_str().to_string_lossy().into_owned(),
+        _ => "the source drive".to_owned(),
+    }
+}
+
 /// Resolve a collision per policy. Default `Rename` produces Windows-Explorer
 /// `name (2).ext`, `name (3).ext`, … suffixes and never clobbers.
 pub fn resolve_collision(requested: PathBuf, policy: CollisionPolicy) -> anyhow::Result<PathBuf> {
@@ -379,6 +409,19 @@ mod tests {
         assert!(stray.exists(), "undo restores the folder");
         assert!(stray.join("child.txt").exists());
         assert!(!resolved.exists(), "trash slot is cleared");
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn is_cross_volume_detects_distinct_drive_letters() {
+        assert!(super::is_cross_volume(
+            Path::new(r"X:\media\a.jpg"),
+            Path::new(r"C:\out\keep")
+        ));
+        assert!(!super::is_cross_volume(
+            Path::new(r"C:\in\a.jpg"),
+            Path::new(r"C:\out\keep")
+        ));
     }
 
     #[test]

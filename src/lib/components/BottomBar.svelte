@@ -14,13 +14,14 @@
   ];
   const navChips: [string, string][] = [
     ["tab", "inbox"],
-    ["↑↓ jk", "move"],
+    ["↑↓", "move"],
     ["→ ←", "drill"],
     ["⏎", "move here"],
-    ["⇧d", "copy here"],
+    ["⇧d", "copy"],
+    ["⇧1-9", "bind"],
+    ["/", "search"],
     ["^d", "delete"],
     ["＋", "new"],
-    ["esc", "back"],
     ["u", "undo"],
   ];
   const chips = $derived(session.focus === "navigator" ? navChips : inboxChips);

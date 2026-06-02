@@ -9,22 +9,73 @@ use crate::domain::{
 use crate::logging::log;
 use crate::media::scan_inbox;
 use crate::operations::{CompletedOp, OperationEngine, OperationKind};
+use crate::persistence::PersistedBindings;
 use crate::search;
 use std::path::{Path, PathBuf};
+
+/// Hotkey characters the bind flow accepts. Trash (`'0'`) is reserved and
+/// auto-bound by the scanner, never reassigned through this flow.
+fn is_bindable_hotkey(hotkey: char) -> bool {
+    matches!(hotkey, '1'..='9' | '-' | '=')
+}
 
 pub struct Session {
     input: PathBuf,
     output: PathBuf,
     destinations: Vec<DestinationDto>,
     engine: OperationEngine,
+    user_bindings: PersistedBindings,
 }
 
 impl Session {
     /// Open a session against the given roots, scanning inbox + destinations.
     pub fn open(input: PathBuf, output: PathBuf) -> anyhow::Result<(Self, SessionView)> {
         let inbox = scan_inbox(&input)?;
-        let destinations = scan_destinations(&output)?;
+        let mut destinations = scan_destinations(&output)?;
         let engine = OperationEngine::new(journal_path(&output));
+
+        // Restore user-bound hotkeys persisted from prior sessions. Applied on
+        // top of the scanned destinations: a bound top-level folder just gets
+        // its hotkey set; a bound *nested* folder (not a top-level child) is
+        // pushed as a new destination so it appears in the list. Matches the
+        // TUI's `apply_user_bindings`.
+        let user_bindings = PersistedBindings::load(&output);
+        for (hotkey, abs_path) in user_bindings.resolved(&output) {
+            if !is_bindable_hotkey(hotkey) {
+                continue;
+            }
+            for dest in destinations.iter_mut() {
+                if dest.hotkey.as_deref() == Some(&hotkey.to_string()) {
+                    dest.hotkey = None;
+                }
+            }
+            if let Some(existing) = destinations
+                .iter_mut()
+                .find(|d| Path::new(&d.path) == abs_path)
+            {
+                existing.hotkey = Some(hotkey.to_string());
+                log(
+                    &output,
+                    &format!("bind restore: [{hotkey}] -> {}", abs_path.display()),
+                );
+                continue;
+            }
+            let label = abs_path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "(custom)".to_owned());
+            destinations.push(DestinationDto {
+                media_count: count_media(&abs_path),
+                label,
+                path: abs_path.to_string_lossy().into_owned(),
+                hotkey: Some(hotkey.to_string()),
+                is_trash: false,
+            });
+            log(
+                &output,
+                &format!("bind restore (new): [{hotkey}] -> {}", abs_path.display()),
+            );
+        }
 
         // Session-open diagnostic banner: exactly what the scanner found this
         // launch, so a reported file-disappearance can be traced to the scan.
@@ -53,6 +104,7 @@ impl Session {
             output,
             destinations,
             engine,
+            user_bindings,
         };
         Ok((session, view))
     }
@@ -250,6 +302,15 @@ impl Session {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| path.to_string_lossy().into_owned());
         let resolved = self.engine.delete_folder(path, &trash)?;
+        // Prune any persisted bindings pointing at the deleted folder (or
+        // anything nested under it) so a hotkey doesn't dangle next launch.
+        self.user_bindings.remove_under(path, &self.output);
+        if let Err(err) = self.user_bindings.save(&self.output) {
+            log(
+                &self.output,
+                &format!("persist bindings failed during delete: {err}"),
+            );
+        }
         log(
             &self.output,
             &format!(
@@ -322,6 +383,105 @@ impl Session {
                 media_count: 0,
             });
         Ok(created)
+    }
+
+    /// Bind a folder under the output subtree to a hotkey (`1..=9`, `-`, `=`).
+    /// Enforces hotkey uniqueness (strips it from any prior holder), sets it on
+    /// the matching destination or pushes a new one for a nested folder, and
+    /// persists the binding. Returns the refreshed destination list.
+    pub fn bind_folder(&mut self, path: &Path, hotkey: char) -> anyhow::Result<Vec<DestinationDto>> {
+        if !is_bindable_hotkey(hotkey) {
+            anyhow::bail!("bind hotkey must be 1-9, -, or =");
+        }
+        let path = self.clamp_to_output(path);
+        let key = hotkey.to_string();
+
+        // Strip the hotkey from any destination currently holding it so the
+        // slot is unique. Trash ('0') is never reached here (not bindable).
+        for dest in self.destinations.iter_mut() {
+            if dest.hotkey.as_deref() == Some(&key) {
+                dest.hotkey = None;
+            }
+        }
+        if let Some(existing) = self
+            .destinations
+            .iter_mut()
+            .find(|d| Path::new(&d.path) == path)
+        {
+            existing.hotkey = Some(key);
+        } else {
+            let label = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "(custom)".to_owned());
+            self.destinations.push(DestinationDto {
+                media_count: count_media(&path),
+                label,
+                path: path.to_string_lossy().into_owned(),
+                hotkey: Some(key),
+                is_trash: false,
+            });
+        }
+
+        self.user_bindings.set(hotkey, &path, &self.output);
+        self.user_bindings.save(&self.output)?;
+        log(
+            &self.output,
+            &format!("bind: [{hotkey}] -> {}", path.display()),
+        );
+        Ok(self.refreshed_destinations())
+    }
+
+    /// Clear a hotkey binding. A scanned top-level folder just loses its hotkey;
+    /// a folder that was only present because of a bind to a non-scanned (nested)
+    /// path is dropped from the list entirely. Persists the removal.
+    pub fn unbind_hotkey(&mut self, hotkey: char) -> anyhow::Result<Vec<DestinationDto>> {
+        let key = hotkey.to_string();
+        let top_level = self.scanned_top_level();
+        let is_top_level = |path: &str| top_level.iter().any(|p| p == Path::new(path));
+
+        self.destinations.retain_mut(|dest| {
+            if dest.hotkey.as_deref() != Some(&key) {
+                return true;
+            }
+            if dest.is_trash || is_top_level(&dest.path) {
+                // Real destination — keep it, just drop the hotkey.
+                dest.hotkey = None;
+                true
+            } else {
+                // Only present because of the bind — remove it entirely.
+                false
+            }
+        });
+
+        self.user_bindings.remove_hotkey(hotkey);
+        self.user_bindings.save(&self.output)?;
+        log(&self.output, &format!("unbind: [{hotkey}]"));
+        Ok(self.refreshed_destinations())
+    }
+
+    /// The immediate child directories of the output root (scanned top-level
+    /// folders), excluding the reserved state dir. Used to decide whether an
+    /// unbound destination is a real folder or only existed because of a bind.
+    fn scanned_top_level(&self) -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&self.output) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !entry.metadata().map(|m| m.is_dir()).unwrap_or(false) {
+                    continue;
+                }
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                if name.eq_ignore_ascii_case(STATE_DIR) {
+                    continue;
+                }
+                out.push(path);
+            }
+        }
+        out
     }
 
     /// Re-count media in every destination and return the refreshed list.

@@ -1,14 +1,12 @@
 //! Destination scanning: child folders of the output root become sort targets.
 //!
-//! Unlike the TUI (which deliberately never auto-grabs digit slots), the GUI's
-//! milestone-1 loop auto-assigns hotkeys `1`–`9` to the first nine non-trash
-//! destinations so the keyboard loop works immediately. Clicking a target works
+//! Like the TUI, the scanner deliberately never auto-grabs digit slots: scanned
+//! folders get no hotkey. Hotkeys come only from user binds (persisted in
+//! `bindings.json` and applied by the session on open). Clicking a target works
 //! regardless of hotkey. Trash always binds to `0`.
 
 use crate::domain::{DestinationDto, MediaKind, STATE_DIR, media_kind};
 use std::path::Path;
-
-const HOTKEY_SLOTS: &[&str] = &["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 /// Scan the output root's immediate child directories as destinations.
 /// The reserved `.comfysort` state dir is excluded. A `.trash`/`trash` folder
@@ -49,9 +47,6 @@ pub fn scan_destinations(output_root: &Path) -> std::io::Result<Vec<DestinationD
     }
 
     normal.sort_by(|a, b| a.label.cmp(&b.label));
-    for (slot, dest) in HOTKEY_SLOTS.iter().zip(normal.iter_mut()) {
-        dest.hotkey = Some((*slot).to_owned());
-    }
 
     let mut out = normal;
     let mut trash = trash.unwrap_or_else(|| synthetic_trash(output_root));

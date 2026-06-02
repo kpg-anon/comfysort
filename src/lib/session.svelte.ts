@@ -6,6 +6,7 @@
 // derived sort+filter projection the UI renders and the cursor indexes into.
 import {
   api,
+  volumeLabel,
   type Destination,
   type FolderEntry,
   type FolderListing,
@@ -20,6 +21,17 @@ export type SortField = "name" | "size" | "mod";
 export type SortOrder = "asc" | "desc";
 export type FilterMode = "all" | "images" | "videos";
 
+/** A move that crosses a drive/share boundary, awaiting confirmation. */
+export interface CrossPrompt {
+  count: number;
+  destLabel: string;
+  sourceVolume: string;
+  run: () => Promise<void>;
+}
+
+/** Hotkey slots that can be bound (mirrors the TUI's `is_bindable_hotkey`). */
+export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
+
 class SessionStore {
   input = $state<string | null>(null);
   output = $state<string | null>(null);
@@ -32,7 +44,6 @@ class SessionStore {
   busy = $state(false);
   error = $state<string | null>(null);
 
-  // Which pane has keyboard focus.
   focus = $state<Focus>("inbox");
 
   // Inbox sort/filter (mod↓ = newest first, the triage default).
@@ -40,11 +51,25 @@ class SessionStore {
   sortOrder = $state<SortOrder>("desc");
   filter = $state<FilterMode>("all");
 
-  // Navigator browsing state + keyboard cursor.
-  nav = $state<FolderListing | null>(null);
-  navCursor = $state(0); // index into navRows (".." counts as row 0 when present)
+  // Multiselection (contiguous range, anchored).
+  selectedPaths = $state<Set<string>>(new Set());
+  selectionAnchor = $state<number | null>(null);
 
-  // Derived sort+filter projection of the inbox.
+  // Navigator browsing + keyboard cursor.
+  nav = $state<FolderListing | null>(null);
+  navCursor = $state(0);
+
+  // Navigator fuzzy search mode.
+  searching = $state(false);
+  searchQuery = $state("");
+  searchResults = $state<FolderEntry[]>([]);
+  searchCursor = $state(0);
+  #searchSeq = 0; // guards out-of-order async results
+
+  // Cross-drive move confirmation (session opt-in like the TUI).
+  allowCrossDevice = $state(false);
+  crossPrompt = $state<CrossPrompt | null>(null);
+
   view = $derived.by<MediaItem[]>(() => {
     let items = this.allItems;
     if (this.filter !== "all") {
@@ -74,8 +99,13 @@ class SessionStore {
   get viewBytes(): number {
     return this.view.reduce((a, i) => a + i.sizeBytes, 0);
   }
+  get selectionCount(): number {
+    return this.selectedPaths.size || (this.current ? 1 : 0);
+  }
+  isSelected(path: string): boolean {
+    return this.selectedPaths.has(path);
+  }
 
-  /** Sort targets in hotkey order (1-9 then 0/trash), trash last. */
   get sortedTargets(): Destination[] {
     const keyed = this.destinations.filter((d) => d.hotkey && !d.isTrash);
     keyed.sort((a, b) => (a.hotkey! < b.hotkey! ? -1 : 1));
@@ -88,29 +118,60 @@ class SessionStore {
 
   // ---- Inbox selection / sort / filter -------------------------------------
 
+  /** Paths the next op acts on, in view order (selection, or the cursor item). */
+  private targetPaths(): string[] {
+    if (this.selectedPaths.size > 0) {
+      return this.view.filter((i) => this.selectedPaths.has(i.path)).map((i) => i.path);
+    }
+    return this.current ? [this.current.path] : [];
+  }
+
   select(i: number) {
     if (i < 0 || i >= this.view.length) return;
     this.cursor = i;
+    this.clearSelection();
   }
   next() {
     if (this.cursor < this.view.length - 1) this.cursor++;
+    this.clearSelection();
   }
   prev() {
     if (this.cursor > 0) this.cursor--;
+    this.clearSelection();
   }
   top() {
     this.cursor = 0;
+    this.clearSelection();
+  }
+  clearSelection() {
+    if (this.selectedPaths.size) this.selectedPaths = new Set();
+    this.selectionAnchor = null;
+  }
+  /** Shift+↑/↓: extend a contiguous selection from the anchor to the cursor. */
+  extendSelection(delta: number) {
+    if (this.view.length === 0) return;
+    const max = this.view.length - 1;
+    const anchor = Math.min(this.selectionAnchor ?? this.cursor, max);
+    if (this.selectionAnchor === null) this.selectionAnchor = anchor;
+    const nextC = Math.min(Math.max(this.cursor + delta, 0), max);
+    this.cursor = nextC;
+    const lo = Math.min(anchor, nextC);
+    const hi = Math.max(anchor, nextC);
+    this.selectedPaths = new Set(this.view.slice(lo, hi + 1).map((i) => i.path));
   }
   cycleSortField() {
     this.sortField = this.sortField === "name" ? "size" : this.sortField === "size" ? "mod" : "name";
+    this.clearSelection();
     this.clampCursor();
   }
   toggleSortOrder() {
     this.sortOrder = this.sortOrder === "asc" ? "desc" : "asc";
+    this.clearSelection();
     this.clampCursor();
   }
   cycleFilter() {
     this.filter = this.filter === "all" ? "images" : this.filter === "images" ? "videos" : "all";
+    this.clearSelection();
     this.clampCursor();
   }
   private clampCursor() {
@@ -145,6 +206,8 @@ class SessionStore {
       this.cursor = 0;
       this.canUndo = false;
       this.focus = "inbox";
+      this.clearSelection();
+      this.exitSearch();
       await this.loadFolders(view.output);
       this.setStatus(`${view.inbox.length} items to sort`, "info");
     } catch (e) {
@@ -153,44 +216,92 @@ class SessionStore {
       this.busy = false;
     }
   }
-
-  /** Re-pick the inbox folder mid-session (keeps the same destination root). */
   async changeInput() {
     const dir = await api.pickDirectory("Choose the inbox folder to sort");
     if (dir && this.output) await this.open(dir, this.output);
   }
-  /** Re-pick the destination root mid-session (keeps the same inbox). */
   async changeOutput() {
     const dir = await api.pickDirectory("Choose the destination root");
     if (dir && this.input) await this.open(this.input, dir);
   }
 
-  // ---- Operations (hotkeys / clicks) ---------------------------------------
+  // ---- Operations (act on the selection, or the cursor item) ---------------
 
   async moveHotkey(hotkey: string) {
-    const item = this.current;
-    if (!item) return;
-    await this.run(() => api.moveToHotkey(item.path, hotkey));
+    if (hotkey === "0") {
+      await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true);
+      return;
+    }
+    const dest = this.destForHotkey(hotkey);
+    if (!dest) {
+      this.setStatus(`No destination bound to ${hotkey}`, "info");
+      return;
+    }
+    await this.moveTargetsTo(dest.path, dest.label);
   }
   async copyHotkey(hotkey: string) {
-    const item = this.current;
-    if (!item) return;
     const dest = this.destForHotkey(hotkey);
     if (!dest || dest.isTrash) return;
-    await this.run(() => api.copyItem(item.path, dest.path));
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, dest.path), false);
   }
   async moveToDest(dest: Destination) {
-    const item = this.current;
-    if (!item) return;
-    if (dest.isTrash) await this.run(() => api.trashItem(item.path));
-    else await this.run(() => api.moveItem(item.path, dest.path));
+    if (dest.isTrash) await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true);
+    else await this.moveTargetsTo(dest.path, dest.label);
+  }
+
+  /** Move the active targets into `destDir`, gating cross-drive moves behind a
+   *  confirmation prompt (once per session unless the user picks "always"). */
+  private async moveTargetsTo(destDir: string, label?: string) {
+    const paths = this.targetPaths();
+    if (paths.length === 0) return;
+    const name = label ?? destDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? destDir;
+    if (!this.allowCrossDevice && (await api.wouldCrossVolume(paths[0], destDir))) {
+      this.crossPrompt = {
+        count: paths.length,
+        destLabel: name,
+        sourceVolume: volumeLabel(paths[0]),
+        run: () => this.runMany(paths, (p) => api.moveItem(p, destDir), true),
+      };
+      this.setStatus("Confirm cross-drive move", "info");
+      return;
+    }
+    await this.runMany(paths, (p) => api.moveItem(p, destDir), true);
+  }
+
+  /** Resolve the cross-drive prompt: confirm once, "always" this session, or cancel. */
+  async resolveCross(choice: "once" | "always" | "cancel") {
+    const prompt = this.crossPrompt;
+    this.crossPrompt = null;
+    if (choice === "cancel" || !prompt) return;
+    if (choice === "always") this.allowCrossDevice = true;
+    await prompt.run();
+  }
+
+  /** Bind the highlighted Navigator folder (or search match) to a hotkey slot. */
+  async bindHighlighted(hotkey: string) {
+    const folder = this.searching ? this.searchSelected : this.navHighlighted;
+    if (!folder) return;
+    try {
+      this.destinations = await api.bindFolder(folder.path, hotkey);
+      this.setStatus(`Bound [${hotkey}] → ${folder.name}`, "good");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+  async unbind(hotkey: string) {
+    try {
+      this.destinations = await api.unbindHotkey(hotkey);
+      this.setStatus(`Unbound [${hotkey}]`, "info");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
   }
   async undo() {
     if (!this.canUndo) {
       this.setStatus("Nothing to undo", "info");
       return;
     }
-    await this.run(() => api.undo());
+    await this.runOne(() => api.undo());
   }
 
   // ---- Navigator -----------------------------------------------------------
@@ -204,7 +315,6 @@ class SessionStore {
   get navOnParent(): boolean {
     return this.navHasParent && this.navCursor === 0;
   }
-  /** The folder under the nav cursor, or null when the cursor is on "..". */
   get navHighlighted(): FolderEntry | null {
     if (this.navOnParent) return null;
     const offset = this.navHasParent ? 1 : 0;
@@ -228,12 +338,10 @@ class SessionStore {
   navHome() {
     if (this.output) this.loadFolders(this.output);
   }
-  /** → drill into the highlighted folder (or ascend when on ".."). */
   async navDrill() {
     if (this.navOnParent) await this.navAscend();
     else if (this.navHighlighted) await this.loadFolders(this.navHighlighted.path);
   }
-  /** ← ascend to the parent directory. */
   async navAscend() {
     if (this.nav?.parent) await this.loadFolders(this.nav.parent);
   }
@@ -241,32 +349,22 @@ class SessionStore {
     if (this.navCursor > this.navRowCount - 1) this.navCursor = Math.max(0, this.navRowCount - 1);
   }
 
-  /** Enter: move the current file into the highlighted folder (or current dir on ".."). */
   async navEnterMove() {
-    const item = this.current;
-    if (!item) return;
-    const target = this.navOnParent ? this.nav?.path : this.navHighlighted?.path;
+    const folder = this.navOnParent ? null : this.navHighlighted;
+    const target = this.navOnParent ? this.nav?.path : folder?.path;
     if (!target) return;
-    await this.run(() => api.moveItem(item.path, target));
+    await this.moveTargetsTo(target, folder?.name);
   }
-  /** Shift+D: copy the current file into the highlighted folder (source stays). */
   async navCopy() {
-    const item = this.current;
-    if (!item) return;
     const target = this.navHighlighted?.path;
     if (!target) return;
-    await this.run(() => api.copyItem(item.path, target));
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, target), false);
   }
-  /** Click/keyboard move into an explicit folder. */
   async moveInto(folder: FolderEntry) {
-    const item = this.current;
-    if (!item) return;
-    await this.run(() => api.moveItem(item.path, folder.path));
+    await this.moveTargetsTo(folder.path, folder.name);
   }
   async copyInto(folder: FolderEntry) {
-    const item = this.current;
-    if (!item) return;
-    await this.run(() => api.copyItem(item.path, folder.path));
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
   }
   async createFolderHere(name: string) {
     if (!this.nav || !name.trim()) return;
@@ -278,19 +376,75 @@ class SessionStore {
       this.setStatus(String(e), "bad");
     }
   }
-  /** Ctrl+D / button: delete the highlighted folder to trash (reversible). */
   async deleteHighlightedFolder() {
     const folder = this.navHighlighted;
     if (!folder) return;
-    const label = folder.mediaCount + folder.subfolderCount > 0 ? " (not empty)" : "";
-    if (!confirm(`Move "${folder.name}"${label} to trash? This can be undone.`)) return;
-    await this.run(() => api.deleteFolder(folder.path));
+    const tag = folder.mediaCount + folder.subfolderCount > 0 ? " (not empty)" : "";
+    if (!confirm(`Move "${folder.name}"${tag} to trash? This can be undone.`)) return;
+    await this.runOne(() => api.deleteFolder(folder.path));
     if (this.nav) await this.loadFolders(this.nav.path);
+  }
+
+  // ---- Navigator fuzzy search ----------------------------------------------
+
+  startSearch() {
+    this.focusNavigator();
+    this.searching = true;
+    this.searchQuery = "";
+    this.searchResults = [];
+    this.searchCursor = 0;
+  }
+  exitSearch() {
+    this.searching = false;
+    this.searchQuery = "";
+    this.searchResults = [];
+    this.searchCursor = 0;
+  }
+  async updateSearch(query: string) {
+    this.searchQuery = query;
+    const seq = ++this.#searchSeq;
+    if (!query.trim()) {
+      this.searchResults = [];
+      this.searchCursor = 0;
+      return;
+    }
+    try {
+      const results = await api.searchFolders(query);
+      if (seq === this.#searchSeq) {
+        this.searchResults = results;
+        this.searchCursor = 0;
+      }
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+  searchDown() {
+    if (this.searchCursor < this.searchResults.length - 1) this.searchCursor++;
+  }
+  searchUp() {
+    if (this.searchCursor > 0) this.searchCursor--;
+  }
+  get searchSelected(): FolderEntry | null {
+    return this.searchResults[this.searchCursor] ?? null;
+  }
+  /** Enter in search: move current file(s) into the highlighted match. */
+  async searchMove() {
+    const match = this.searchSelected;
+    if (!match) return;
+    await this.moveTargetsTo(match.path, match.name);
+  }
+  /** Drill into the highlighted search match and leave search mode. */
+  async searchDrill(folder?: FolderEntry) {
+    const target = folder ?? this.searchSelected;
+    if (!target) return;
+    this.exitSearch();
+    await this.loadFolders(target.path);
   }
 
   // ---- Internal ------------------------------------------------------------
 
-  private async run(op: () => Promise<OpOutcome>) {
+  /** Single-outcome op (undo, folder delete). */
+  private async runOne(op: () => Promise<OpOutcome>) {
     if (this.busy) return;
     this.busy = true;
     try {
@@ -305,16 +459,43 @@ class SessionStore {
     }
   }
 
+  /** Batch op over `paths`; each call is journaled + individually undoable. */
+  private async runMany(
+    paths: string[],
+    op: (path: string) => Promise<OpOutcome>,
+    clearSel: boolean,
+  ) {
+    if (this.busy || paths.length === 0) return;
+    this.busy = true;
+    let done = 0;
+    let last: OpOutcome | null = null;
+    try {
+      for (const p of paths) {
+        last = await op(p);
+        this.applyOutcome(last);
+        done++;
+      }
+      if (last) {
+        const verb = last.kind === "copy" ? "Copied" : last.kind === "trash" ? "Trashed" : "Moved";
+        this.setStatus(done > 1 ? `${verb} ${done} items` : last.message, kindToStatus(last.kind));
+      }
+      if (clearSel) this.clearSelection();
+      if (this.nav) await this.loadFolders(this.nav.path);
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    } finally {
+      this.busy = false;
+    }
+  }
+
   private applyOutcome(out: OpOutcome) {
     this.destinations = out.destinations;
     this.canUndo = out.canUndo;
-
     if (out.sourceRemoved) {
       const idx = this.allItems.findIndex((i) => i.path === out.sourcePath);
       if (idx >= 0) {
         this.allItems = [...this.allItems.slice(0, idx), ...this.allItems.slice(idx + 1)];
       }
-      // Sticky cursor: keep the same row index so the next file slides in.
       this.clampCursor();
     }
     if (out.restoredItem) {
@@ -331,13 +512,7 @@ class SessionStore {
 }
 
 function kindToStatus(kind: OpKind): StatusKind {
-  switch (kind) {
-    case "move":
-    case "copy":
-      return "good";
-    default:
-      return "info";
-  }
+  return kind === "move" || kind === "copy" ? "good" : "info";
 }
 
 export const session = new SessionStore();

@@ -86,7 +86,22 @@ export const api = {
 
   searchFolders: (query: string): Promise<FolderEntry[]> =>
     invoke("search_folders", { query }),
+
+  bindFolder: (path: string, hotkey: string): Promise<Destination[]> =>
+    invoke("bind_folder", { path, hotkey }),
+
+  unbindHotkey: (hotkey: string): Promise<Destination[]> =>
+    invoke("unbind_hotkey", { hotkey }),
+
+  wouldCrossVolume: (source: string, destDir: string): Promise<boolean> =>
+    invoke("would_cross_volume", { source, destDir }),
 };
+
+/** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */
+export function volumeLabel(path: string): string {
+  const m = path.match(/^[a-zA-Z]:/) || path.match(/^\\\\[^\\]+\\[^\\]+/);
+  return m ? m[0] : "another drive";
+}
 
 /** Human-readable byte size, e.g. 1.4 MB. */
 export function humanSize(bytes: number): string {

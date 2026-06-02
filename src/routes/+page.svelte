@@ -12,12 +12,29 @@
 
   const open = $derived(session.input !== null && session.output !== null);
 
-  const DIGITS = new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+  // Resolve a layout-stable hotkey slot from a KeyboardEvent.code.
+  function slotFromCode(code: string): string | null {
+    const m = code.match(/^Digit([0-9])$/);
+    if (m) return m[1];
+    if (code === "Minus") return "-";
+    if (code === "Equal") return "=";
+    return null;
+  }
 
-  // Keyboard-first: every action has a key. Hotkeys (digits) and undo are global
+  // Keyboard-first: every action has a key. Hotkey slots and undo are global
   // across panes; navigation keys route by which pane has focus.
   function onKey(e: KeyboardEvent) {
     if (!open) return;
+
+    // --- Modal: cross-drive confirm swallows all other input ---
+    if (session.crossPrompt) {
+      const k = e.key.toLowerCase();
+      if (k === "y") { e.preventDefault(); session.resolveCross("once"); }
+      else if (k === "a") { e.preventDefault(); session.resolveCross("always"); }
+      else if (k === "n" || e.key === "Escape") { e.preventDefault(); session.resolveCross("cancel"); }
+      return;
+    }
+
     const t = e.target as HTMLElement;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
 
@@ -28,16 +45,18 @@
       return;
     }
 
-    // --- Global: digit hotkey slots (event.code is layout-stable) ---
-    const m = e.code.match(/^Digit([0-9])$/);
-    if (m) {
-      const d = m[1];
+    // --- Global: hotkey slots (1-9, 0=trash, -, =). Shift = copy in the Inbox,
+    //     bind the highlighted folder in the Navigator. ---
+    const slot = slotFromCode(e.code);
+    if (slot) {
       e.preventDefault();
-      if (d === "0") {
+      if (slot === "0") {
         if (!e.shiftKey) session.moveHotkey("0"); // trash
-      } else if (DIGITS.has(d)) {
-        if (e.shiftKey) session.copyHotkey(d);
-        else session.moveHotkey(d);
+      } else if (e.shiftKey) {
+        if (session.focus === "navigator") session.bindHighlighted(slot);
+        else session.copyHotkey(slot);
+      } else {
+        session.moveHotkey(slot);
       }
       return;
     }
@@ -50,14 +69,17 @@
     }
 
     // --- Pane-routed navigation ---
-    if (session.focus === "navigator") {
-      navigatorKey(e);
-    } else {
-      inboxKey(e);
-    }
+    if (session.focus === "navigator") navigatorKey(e);
+    else inboxKey(e);
   }
 
   function inboxKey(e: KeyboardEvent) {
+    // Shift+arrows extend a contiguous multiselection.
+    if (e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      session.extendSelection(e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
     switch (e.key) {
       case "ArrowDown":
       case "j":
@@ -89,6 +111,10 @@
 
   function navigatorKey(e: KeyboardEvent) {
     switch (e.key) {
+      case "/":
+        e.preventDefault();
+        session.startSearch();
+        break;
       case "ArrowDown":
       case "j":
         e.preventDefault();
@@ -149,6 +175,26 @@
     </main>
     <BottomBar />
   </div>
+
+  {#if session.crossPrompt}
+    <div class="modal-scrim">
+      <div class="modal">
+        <div class="mtitle">Cross-drive move</div>
+        <p>
+          Moving {session.crossPrompt.count}
+          {session.crossPrompt.count === 1 ? "file" : "files"} from
+          <b>{session.crossPrompt.sourceVolume}</b> into
+          <b>{session.crossPrompt.destLabel}</b> copies across drives, then removes
+          the source. This is slower than a same-drive move.
+        </p>
+        <div class="mrow">
+          <button class="mbtn go" onclick={() => session.resolveCross("once")}><kbd>y</kbd> Move once</button>
+          <button class="mbtn" onclick={() => session.resolveCross("always")}><kbd>a</kbd> Always this session</button>
+          <button class="mbtn cancel" onclick={() => session.resolveCross("cancel")}><kbd>n</kbd> Cancel</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -170,5 +216,50 @@
     grid-template-rows: auto auto 1fr;
     gap: var(--gap);
     min-height: 0;
+  }
+  .modal-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 10, 13, 0.6);
+    display: grid;
+    place-items: center;
+    z-index: 50;
+  }
+  .modal {
+    width: 440px;
+    background: var(--bg-panel);
+    border: 1px solid var(--orange);
+    border-radius: 10px;
+    padding: 20px 22px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .mtitle { color: var(--orange); font-weight: 700; margin-bottom: 8px; }
+  .modal p { color: var(--text-secondary); font-size: 12.5px; margin: 0 0 16px; line-height: 1.5; }
+  .modal b { color: var(--text-primary); }
+  .mrow { display: flex; gap: 8px; }
+  .mbtn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-chip);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .mbtn:hover { border-color: var(--text-muted); }
+  .mbtn.go { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, var(--border)); }
+  .mbtn.cancel { color: var(--text-muted); }
+  .mbtn kbd {
+    font-family: var(--mono);
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 11px;
   }
 </style>
