@@ -49,6 +49,10 @@ function parentOf(path: string): string | null {
 function normPath(p: string): string {
   return p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
+/** Final path segment (file or folder name). */
+function baseName(p: string): string {
+  return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
+}
 
 class SessionStore {
   input = $state<string | null>(null);
@@ -289,7 +293,7 @@ class SessionStore {
 
   async moveHotkey(hotkey: string) {
     if (hotkey === "0") {
-      await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true);
+      await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true, "Trashing");
       return;
     }
     const dest = this.destForHotkey(hotkey);
@@ -302,10 +306,10 @@ class SessionStore {
   async copyHotkey(hotkey: string) {
     const dest = this.destForHotkey(hotkey);
     if (!dest || dest.isTrash) return;
-    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, dest.path), false);
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, dest.path), false, "Copying");
   }
   async moveToDest(dest: Destination) {
-    if (dest.isTrash) await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true);
+    if (dest.isTrash) await this.runMany(this.targetPaths(), (p) => api.trashItem(p), true, "Trashing");
     else await this.moveTargetsTo(dest.path, dest.label);
   }
 
@@ -374,7 +378,7 @@ class SessionStore {
       this.setStatus("Nothing to undo", "info");
       return;
     }
-    await this.runOne(() => api.undo());
+    await this.runOne(() => api.undo(), "Undoing…");
   }
 
   // ---- Context menu + item actions -----------------------------------------
@@ -406,7 +410,7 @@ class SessionStore {
   }
   async trashPath(path: string) {
     this.closeContext();
-    await this.runMany([path], (p) => api.trashItem(p), true);
+    await this.runMany([path], (p) => api.trashItem(p), true, "Trashing");
   }
 
   /** Re-scan the input directory and adopt the fresh list, keeping the cursor. */
@@ -506,7 +510,7 @@ class SessionStore {
     const folder = this.navHighlighted;
     if (!folder) return;
     this.#navStickyPath = folder.path;
-    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false, "Copying");
   }
   async moveInto(folder: FolderEntry) {
     this.#navStickyPath = folder.path;
@@ -514,7 +518,7 @@ class SessionStore {
   }
   async copyInto(folder: FolderEntry) {
     this.#navStickyPath = folder.path;
-    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false);
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false, "Copying");
   }
   /** Open the inline new-folder prompt (＋ button or Ctrl+N). */
   startNewFolder() {
@@ -564,7 +568,7 @@ class SessionStore {
     const tag = folder.mediaCount + folder.subfolderCount > 0 ? " (not empty)" : "";
     if (settings.confirmFolderDelete && !confirm(`Move "${folder.name}"${tag} to trash? This can be undone.`))
       return;
-    await this.runOne(() => api.deleteFolder(folder.path));
+    await this.runOne(() => api.deleteFolder(folder.path), "Deleting…");
     if (this.nav) await this.loadFolders(this.nav.path);
   }
 
@@ -640,10 +644,12 @@ class SessionStore {
 
   // ---- Internal ------------------------------------------------------------
 
-  /** Single-outcome op (undo, folder delete). */
-  private async runOne(op: () => Promise<OpOutcome>) {
+  /** Single-outcome op (undo, folder delete). `pending` is shown (with the busy
+   *  spinner) while the op runs — useful for slow cross-volume work. */
+  private async runOne(op: () => Promise<OpOutcome>, pending?: string) {
     if (this.busy) return;
     this.busy = true;
+    if (pending) this.setStatus(pending, "info");
     try {
       const out = await op();
       this.applyOutcome(out);
@@ -657,14 +663,19 @@ class SessionStore {
     }
   }
 
-  /** Batch op over `paths`; each call is journaled + individually undoable. */
+  /** Batch op over `paths`; each call is journaled + individually undoable.
+   *  `verb` drives the in-progress status (e.g. "Moving"), shown with the busy
+   *  spinner — for a large cross-volume copy this is the "Moving…" indicator. */
   private async runMany(
     paths: string[],
     op: (path: string) => Promise<OpOutcome>,
     clearSel: boolean,
+    verb: "Moving" | "Copying" | "Trashing" = "Moving",
   ) {
     if (this.busy || paths.length === 0) return;
     this.busy = true;
+    const subject = paths.length === 1 ? baseName(paths[0]) : `${paths.length} items`;
+    this.setStatus(`${verb} ${subject}…`, "info");
     const removed = new Set<string>();
     let done = 0;
     let last: OpOutcome | null = null;

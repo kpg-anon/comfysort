@@ -2,6 +2,13 @@
   import { session } from "$lib/session.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
+  import { getVersion } from "@tauri-apps/api/app";
+
+  // App version (from tauri.conf.json) shown next to the brand.
+  let version = $state("");
+  $effect(() => {
+    getVersion().then((v) => (version = v)).catch(() => {});
+  });
 
   function norm(p: string): string {
     return p.replace(/\\/g, "/");
@@ -23,7 +30,10 @@
   </button>
 
   {#if session.status}
-    <div class="status status-{session.statusKind}">▸ {session.status}</div>
+    <div class="status status-{session.statusKind}" class:busy={session.busy}>
+      {#if session.busy}<span class="spinner"></span>{:else}▸{/if}
+      {session.status}
+    </div>
   {:else}
     <div></div>
   {/if}
@@ -37,7 +47,7 @@
       <span class="nf gi">{I.drive}</span>
       <span class="txt">{session.output ? leaf(session.output) : ""}</span>
     </button>
-    <span class="brand">comfysort</span>
+    <span class="brand">comfysort{version ? ` ${version}` : ""}</span>
     <button class="cog nf" title="Settings" onclick={() => settings.toggleOpen()}>{I.cog}</button>
   </div>
 </header>
@@ -83,6 +93,18 @@
   .status-good { color: var(--green); }
   .status-bad { color: var(--red); }
   .status-info { color: var(--cyan); }
+  .status.busy { color: var(--cyan); }
+  .status .spinner {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border: 2px solid color-mix(in srgb, var(--cyan) 30%, transparent);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -1px;
+    margin-right: 3px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .right { justify-self: end; display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
   .output { color: var(--cyan); }
   .output:hover { border-color: var(--cyan); }
