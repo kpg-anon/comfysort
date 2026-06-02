@@ -478,20 +478,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "comfysort-engine"
-version = "0.3.0"
-dependencies = [
- "anyhow",
- "chrono",
- "libc",
- "serde",
- "serde_json",
- "tempfile",
- "toml 0.9.12+spec-1.1.0",
-]
-
-[[package]]
-name = "comfysort-tauri"
+name = "comfysort"
 version = "0.3.0"
 dependencies = [
  "anyhow",
@@ -503,6 +490,19 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+]
+
+[[package]]
+name = "comfysort-engine"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "libc",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml 0.9.12+spec-1.1.0",
 ]
 
 [[package]]

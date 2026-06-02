@@ -1,5 +1,5 @@
 [package]
-name = "comfysort-tauri"
+name = "comfysort"
 version = "0.3.0"
 description = "A calm, preview-first desktop workstation for sorting media — fast."
 authors = ["you"]
