@@ -1,0 +1,13 @@
+# Cargo workspace root for the comfysort-tauri desktop app.
+#
+# Two members:
+#   - crates/engine : the pure-Rust sorting engine (no Tauri deps; fully testable)
+#   - src-tauri     : the Tauri shell that exposes the engine over IPC
+#
+# Keeping the engine in its own crate means `cargo test -p comfysort-engine`
+# builds a tiny test binary free of the tauri/wry/webview2 stack — which both
+# compiles fast and avoids the Windows-GNU runtime-DLL entanglement that a
+# combined crate hits.
+[workspace]
+resolver = "2"
+members = ["src-tauri", "crates/engine"]

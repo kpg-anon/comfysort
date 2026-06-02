@@ -1,0 +1,84 @@
+/* comfysort design tokens — ported from ../comfysort/design.md §4.
+   Dark, calm, preview-first. Centralized here; components reference vars only. */
+:root {
+  /* base */
+  --bg-app: #111418;
+  --bg-panel: #141920;
+  --bg-panel-alt: #171d24;
+  --bg-selected: #263a24;       /* subtle green-tinted selection */
+  --bg-selected-active: #2a2438; /* purple active selection */
+  --bg-chip: #1a2028;
+  --border: #2b313a;
+  --border-muted: #232830;
+
+  /* text */
+  --text-primary: #d8dde7;
+  --text-secondary: #a9b0bc;
+  --text-muted: #7f8794;
+  --text-inverse: #0f1318;
+
+  /* accents (semantic) */
+  --green: #82d65a;   /* positive / primary action */
+  --cyan: #57c7e3;    /* neutral interactive / media chips */
+  --blue: #6ea8ff;    /* media chips */
+  --purple: #c287ff;  /* active / highlight / focus */
+  --yellow: #e2b84f;  /* caution / secondary standout */
+  --orange: #d98c3f;  /* destructive warning */
+  --red: #ef6b6b;     /* destructive */
+
+  --radius: 7px;
+  --radius-sm: 4px;
+  --gap: 10px;
+
+  --mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* extension chip colors keyed by media type */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+  background: var(--bg-chip);
+  line-height: 1.4;
+}
+.ext-jpg, .ext-jpeg { color: var(--green); }
+.ext-png { color: var(--cyan); }
+.ext-webp, .ext-avif { color: var(--purple); }
+.ext-gif { color: var(--yellow); }
+.ext-mp4, .ext-m4v { color: var(--blue); }
+.ext-mkv { color: var(--yellow); }
+.ext-webm { color: var(--purple); }
+.ext-mov { color: var(--cyan); }
+.ext-other { color: var(--text-muted); }
+
+/* thin scrollbars that match the chrome */
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: #3a414c; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+button { font-family: inherit; }
