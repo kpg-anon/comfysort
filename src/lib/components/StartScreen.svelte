@@ -19,7 +19,10 @@
 
 <div class="start">
   <div class="card">
-    <h1><span>comfysort</span></h1>
+    <div class="brandhead">
+      <img class="logo" src="/icon.png" alt="comfysort" />
+      <h1><span>comfysort</span></h1>
+    </div>
     <p class="tag">Preview a file. Press a key. It moves. Press <kbd>u</kbd> to undo.</p>
 
     <div class="field">
@@ -60,7 +63,9 @@
     padding: 28px 30px 26px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
   }
-  h1 { margin: 0; font-family: var(--mono); font-weight: 700; font-size: 26px; }
+  .brandhead { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+  .logo { width: 66px; height: 66px; flex: none; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)); }
+  h1 { margin: 0; font-family: var(--mono); font-weight: 700; font-size: 28px; }
   h1 span { color: var(--purple); }
   .tag { margin: 4px 0 22px; color: var(--text-muted); font-size: 12.5px; }
   .tag kbd {

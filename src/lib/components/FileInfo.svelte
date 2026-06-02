@@ -67,7 +67,7 @@
     padding: 8px 0;
     overflow: hidden;
   }
-  .title { padding: 2px 12px 8px; color: var(--text-primary); font-weight: 600; }
+  .title { padding: 2px 12px 8px; color: var(--purple); font-weight: 600; }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;

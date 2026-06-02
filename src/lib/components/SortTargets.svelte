@@ -40,7 +40,7 @@
     background: var(--bg-panel); border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
   }
-  .title { padding: 8px 12px 4px; color: var(--text-primary); font-weight: 600; }
+  .title { padding: 8px 12px 4px; color: var(--purple); font-weight: 600; }
   .list { overflow-y: auto; padding: 4px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
   .slot {
     display: grid;
@@ -73,10 +73,11 @@
   .count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .unbind {
     border: none; background: transparent; color: var(--text-muted);
-    cursor: pointer; font-size: 11px; line-height: 1; opacity: 0; padding: 0;
+    cursor: pointer; font-size: 12px; line-height: 1; opacity: 0.5; padding: 0;
+    transition: color 0.1s, opacity 0.1s;
   }
-  .slot:hover .unbind { opacity: 1; }
-  .unbind:hover { color: var(--red); }
+  .slot:hover .unbind { opacity: 0.85; }
+  .unbind:hover { color: var(--red); opacity: 1; }
   .spacer { width: 18px; }
   .hint {
     display: flex; align-items: center; gap: 6px;

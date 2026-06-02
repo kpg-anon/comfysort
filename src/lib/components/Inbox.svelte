@@ -75,7 +75,7 @@
     color: var(--text-primary);
     font-weight: 600;
   }
-  .focused .title > span:first-child { color: var(--purple); }
+  .title > span:first-child { color: var(--purple); }
   .modes { font-size: 10.5px; font-weight: 400; color: var(--text-muted); font-family: var(--mono); }
   .cols {
     display: grid;

@@ -169,8 +169,7 @@
   }
   .pane.focused { border-color: var(--purple); }
   .head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 2px 12px; }
-  .title { color: var(--text-primary); font-weight: 600; }
-  .focused .title { color: var(--purple); }
+  .title { color: var(--purple); font-weight: 600; }
   .actions { display: flex; gap: 6px; }
   .hbtn {
     border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-secondary);
@@ -208,6 +207,20 @@
   }
   .row:hover .drill { color: var(--text-primary); }
   .icon { color: var(--yellow); flex: none; width: 14px; text-align: center; }
+  /* the ".." ascend row is a bare button — strip the default button chrome so it
+     reads as a plain list entry like the folder rows (yazi-style). */
+  .up {
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    gap: 7px;
+    padding: 5px 6px;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+  }
+  .up:hover { color: var(--text-primary); }
   .up .icon { color: var(--text-muted); }
   .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .rname { display: flex; flex-direction: column; min-width: 0; flex: 1; }

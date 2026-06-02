@@ -277,13 +277,26 @@ class SessionStore {
     await prompt.run();
   }
 
-  /** Bind the highlighted Navigator folder (or search match) to a hotkey slot. */
+  /** Bind a folder to a hotkey slot. Targets the highlighted folder (or search
+   *  match); when nothing is highlighted — e.g. inside a leaf folder with no
+   *  subdirectories, or on the ".." row — it binds the directory you're in. */
   async bindHighlighted(hotkey: string) {
-    const folder = this.searching ? this.searchSelected : this.navHighlighted;
-    if (!folder) return;
+    let path: string | undefined;
+    let name: string | undefined;
+    if (this.searching) {
+      path = this.searchSelected?.path;
+      name = this.searchSelected?.name;
+    } else if (this.navHighlighted) {
+      path = this.navHighlighted.path;
+      name = this.navHighlighted.name;
+    } else if (this.nav) {
+      path = this.nav.path;
+      name = this.nav.path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || this.nav.path;
+    }
+    if (!path) return;
     try {
-      this.destinations = await api.bindFolder(folder.path, hotkey);
-      this.setStatus(`Bound [${hotkey}] → ${folder.name}`, "good");
+      this.destinations = await api.bindFolder(path, hotkey);
+      this.setStatus(`Bound [${hotkey}] → ${name}`, "good");
     } catch (e) {
       this.setStatus(String(e), "bad");
     }
