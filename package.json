@@ -1,7 +1,17 @@
 {
   "name": "comfysort",
   "version": "0.3.1",
-  "description": "",
+  "private": true,
+  "description": "A calm, keyboard-first desktop workstation for sorting large piles of media — fast.",
+  "author": "kpg-anon",
+  "homepage": "https://github.com/kpg-anon/comfysort#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kpg-anon/comfysort.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kpg-anon/comfysort/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite dev",

@@ -2,7 +2,9 @@
 name = "comfysort"
 version = "0.3.1"
 description = "A calm, preview-first desktop workstation for sorting media — fast."
-authors = ["you"]
+authors = ["kpg-anon"]
+license = "MIT"
+repository = "https://github.com/kpg-anon/comfysort"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
