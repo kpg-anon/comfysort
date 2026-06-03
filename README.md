@@ -120,17 +120,19 @@ Windows (x64):
 
 | File | Notes |
 |:--|:--|
-| `comfysort_<version>_x64-setup.exe` | **Recommended** — NSIS installer |
-| `comfysort_<version>_x64_en-US.msi` | MSI alternative (managed / silent installs) |
+| `comfysort_<version>_x64-portable.zip` | **Portable (recommended)** — no install; unzip and run `comfysort.exe` |
+| `comfysort_<version>_x64-setup.exe` | NSIS installer — Start-menu entry + uninstaller |
+| `comfysort_<version>_x64_en-US.msi` | MSI — managed / silent installs |
 
-1. Grab the `-setup.exe` from the [Releases page](https://github.com/kpg-anon/comfysort/releases/latest).
-2. Run it. comfysort needs the **WebView2** runtime — preinstalled on Windows 11; the installer fetches it automatically if missing.
-3. Launch comfysort from the Start menu.
+- **Portable:** download the `-portable.zip`, unzip anywhere, run `comfysort.exe`. Nothing to install.
+- **Installer:** run the `-setup.exe` and launch comfysort from the Start menu.
+
+comfysort needs the **WebView2** runtime — preinstalled on Windows 10/11. The installer fetches it automatically if missing; for the portable build, grab [Evergreen WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) if your system doesn't already have it.
 
 > [!NOTE]
-> The installers are currently **unsigned**, so Windows SmartScreen may warn on first launch — choose **More info → Run anyway**. Code signing is on the roadmap.
+> Builds are currently **unsigned**, so Windows SmartScreen may warn on first launch — choose **More info → Run anyway**. Code signing is on the roadmap.
 
-Prefer to build it yourself? See [Install & build](#-install--build).
+Release notes mirror the **[changelog](CHANGELOG.md)**. Prefer to build it yourself? See [Install & build](#-install--build).
 
 ## 📦 Install & build
 
