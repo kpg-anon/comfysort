@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-06-03
+
 ### Changed
-- Header tooltips are now themed in-app popovers instead of the OS tooltip box; a multi-folder inbox lists its folders there.
+- All hover tooltips (header, sort targets, and Navigator folders) are themed in-app popovers instead of the OS tooltip box; a multi-folder inbox lists its folders there.
 - The refresh and add-folder buttons are rounded squares, matching the history/settings buttons.
+- A long inbox path shows as the folder name (full path in its tooltip), so the header buttons are no longer pushed off-screen.
 
 ### Fixed
 - The "add inbox folder" button now renders its icon (was a missing glyph codepoint).
-- Long inbox paths are truncated to the folder name (full paths in the tooltip), so the header buttons are no longer pushed off-screen.
 - The folder picker is parented to the main window so it reliably opens in front.
 
 ## [0.4.2] — 2026-06-03
@@ -103,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.3
 [0.4.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.2
 [0.4.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.0

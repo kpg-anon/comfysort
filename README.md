@@ -7,11 +7,11 @@
 
 <p>
   <b>A calm, preview-first desktop workstation for sorting large piles of media — fast.</b><br>
-  <i>Preview the file. Press a key. It moves. Press <kbd>u</kbd> to undo. That's the whole loop.</i>
+  <i>Preview the file. Press a key. It moves. Press <kbd>Ctrl</kbd>+<kbd>U</kbd> to undo. That's the whole loop.</i>
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.4.2-c287ff?style=for-the-badge" alt="Version 0.4.2">
+  <img src="https://img.shields.io/badge/version-0.4.3-c287ff?style=for-the-badge" alt="Version 0.4.3">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-engine-CE412B?style=for-the-badge&logo=rust&logoColor=white" alt="Rust engine">
@@ -59,13 +59,13 @@ If you triage thousands of images and videos at a time — photo dumps, screensh
 | 🖼️ | **Preview-first** | The image or video is the hero — rendered natively in the webview, full quality, front and center. |
 | ⌨️ | **Keyboard-first** | Destinations bind to <kbd>1</kbd>–<kbd>9</kbd>, trash to <kbd>0</kbd>. A focus model routes navigation; hotkeys are global. |
 | 🌙 | **Calm** | Dark theme, restrained palette, no decorative chrome. Built for long sessions. |
-| ↩️ | **Explicit & reversible** | Nothing moves without an action. Every mutation is journaled. <kbd>u</kbd> walks it all back. |
+| ↩️ | **Explicit & reversible** | Nothing moves without an action. Every mutation is journaled. <kbd>Ctrl</kbd>+<kbd>U</kbd> walks it all back. |
 
 It is **not** a general file manager and **not** an auto-sorter. Nothing on disk changes without an explicit user action.
 
 ## 🔁 The loop
 
-Pick an **inbox** and a **destination root** → preview the current file → press a hotkey (or click a target) → it **moves**, **copies**, or goes to **trash** → every mutation is journaled → press <kbd>u</kbd> to walk it back.
+Pick an **inbox** and a **destination root** → preview the current file → press a hotkey (or click a target) → it **moves**, **copies**, or goes to **trash** → every mutation is journaled → press <kbd>Ctrl</kbd>+<kbd>U</kbd> to walk it back.
 
 ```mermaid
 flowchart LR
@@ -77,7 +77,7 @@ flowchart LR
     D --> G["📓 Journal + counts"]
     E --> G
     F --> G
-    G -.->|"u · undo"| B
+    G -.->|"Ctrl+U · undo"| B
 ```
 
 ## 🎛️ Features
@@ -86,17 +86,22 @@ flowchart LR
 - [x] **Keyboard-first three-pane workstation** — **Inbox** (left), **Preview** (center, the hero), and a right column of **File Info**, **Sort Targets**, and **Navigator**.
 - [x] **Focus model** — <kbd>Tab</kbd> toggles keyboard focus between Inbox and Navigator; the focused pane gets a purple border and `*` marker. Hotkeys and undo stay global; navigation routes by focus.
 - [x] **Journaled move / copy / trash** — every mutation is appended to `<output>/.comfysort/journal.jsonl` (intent before, result after).
-- [x] **Multi-step session undo** — <kbd>u</kbd> walks the whole session back: moves restore the file *and* re-insert the inbox row, copies unlink the duplicate, trashes restore from `.trash`.
+- [x] **Multi-step session undo** — <kbd>Ctrl</kbd>+<kbd>U</kbd> walks the whole session back: moves restore the file *and* re-insert the inbox row, copies unlink the duplicate, trashes restore from `.trash`.
+- [x] **Action history** — a popup (icon next to the settings cog) lists this session's moves, copies, and trashes, and can revert any single file individually — independent of the undo stack.
 - [x] **Collision-safe rename** — name conflicts get Windows-Explorer-style `name (2).ext` suffixes; the default policy never overwrites.
 - [x] **Cross-volume safe moves** — `rename` first; across a drive/share boundary it falls back to copy → verify size → delete source, with a confirm modal (<kbd>y</kbd> once / <kbd>a</kbd> always this session / <kbd>n</kbd> cancel) before any bytes move.
-- [x] **Folder Navigator** — drill in/out of the destination tree, **fuzzy search** anywhere under the root (<kbd>/</kbd>), create and delete folders, with **recursive media counts** (a folder of subfolders still reflects its descendants).
-- [x] **Persistent hotkey binding** — bind any folder under the output root to a slot (<kbd>Shift</kbd>+digit on a highlighted folder); binds survive restart via `<output>/.comfysort/bindings.json`. Only trash auto-binds, to <kbd>0</kbd>.
+- [x] **Folder Navigator** — drill in/out of the destination tree, **type-to-search** to fuzzy-find folders anywhere under the root (just start typing), create, rename, and delete folders, with **recursive media counts** (a folder of subfolders still reflects its descendants). Right-click a folder to **open it in Explorer** or **rename it in place**.
+- [x] **Sort-target editor** — a dedicated panel (opened from Settings) binds hotkey slots to *any* folder, including folders outside the destination root. A `=` slot defaults to a managed archive folder, and an optional `−` slot takes a second custom destination.
+- [x] **Persistent hotkey binding** — bind any folder under the output root to a slot (<kbd>Shift</kbd>+digit on a highlighted Navigator folder); binds survive restart via `<output>/.comfysort/bindings.json`. Only trash auto-binds, to <kbd>0</kbd>.
 - [x] **Inbox sort / filter + multiselect** — cycle sort field (name/size/modified) and filter (all/images/videos); <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> extends a contiguous selection that move/copy then act on in a batch (each op journaled individually).
+- [x] **Multiple inbox folders** — add more source folders to an open session (the ＋ button beside the inbox folder); their media merges into one inbox.
 - [x] **Virtualized inbox** — only visible rows render, so an inbox of **25k+ files** stays smooth; mutating commands return tiny deltas instead of re-sending the list.
 - [x] **Right-click context menu** — open in the default viewer, reveal in the file explorer, move to trash, or refresh the inbox.
 - [x] **Native settings overlay** — a cog opens an in-app overlay that reads and writes `config.toml`.
 - [x] **4 theme presets** — Comfy Dark, Nord, Gruvbox, Catppuccin.
 - [x] **Disk-space readout** — free / total space for the destination drive.
+- [x] **In-app updater** — with "check for updates on launch" enabled, comfysort notices a new release and offers one-click **Update now** (downloads, installs, and relaunches).
+- [x] **Portable build** — a no-install zip that keeps its `config.toml` beside the executable, so settings travel with the app.
 
 ## 🖥️ The interface
 
@@ -181,8 +186,8 @@ There's a **focus model**: either the Inbox or the Navigator holds keyboard focu
 | <kbd>1</kbd>–<kbd>9</kbd> | Move current file (or selection) to that destination |
 | <kbd>0</kbd> | Move to trash |
 | <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> | **Copy** to that destination — original stays *(in Navigator focus, **binds** the highlighted folder to that slot)* |
-| <kbd>u</kbd> | Undo the last operation (multi-step) |
-| <kbd>/</kbd> | Open fuzzy folder search |
+| <kbd>Shift</kbd>+<kbd>D</kbd> | **Copy** the current file into the highlighted / drilled-into Navigator folder (source stays) |
+| <kbd>Ctrl</kbd>+<kbd>U</kbd> | Undo the last operation (multi-step) |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | New folder (inline prompt) |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Toggle inbox sort order |
 | <kbd>F5</kbd> | Refresh / rescan the inbox |
@@ -192,24 +197,26 @@ There's a **focus model**: either the Inbox or the Navigator holds keyboard focu
 
 | Key | Action |
 |:--|:--|
-| <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>j</kbd>/<kbd>k</kbd> | Change selection |
+| <kbd>↑</kbd>/<kbd>↓</kbd> | Change selection |
 | <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Jump to top / bottom |
 | <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> | Extend a contiguous multiselection |
 | <kbd>s</kbd> | Cycle sort field — name / size / modified |
 | <kbd>f</kbd> | Cycle filter — all / images / videos |
+| <kbd>/</kbd> | Open fuzzy folder search |
 
 **Navigator focus**
 
 | Key | Action |
 |:--|:--|
-| <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>j</kbd>/<kbd>k</kbd> | Move cursor |
-| <kbd>→</kbd>/<kbd>l</kbd> · <kbd>←</kbd>/<kbd>h</kbd> | Drill into folder / ascend |
+| <kbd>↑</kbd>/<kbd>↓</kbd> | Move cursor |
+| <kbd>→</kbd> / <kbd>←</kbd> | Drill into folder / ascend |
+| *(type)* | Start typing to fuzzy-find folders anywhere under the root |
 | <kbd>Enter</kbd> | **Move** current file (or selection) into the highlighted folder |
 | <kbd>Shift</kbd>+<kbd>D</kbd> | **Copy** into the highlighted folder (source stays) |
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete folder to trash (confirm prompt) |
 | <kbd>Esc</kbd> | Return focus to the Inbox |
 
-**Fuzzy search** (<kbd>/</kbd>): type to match folders anywhere under the root · <kbd>↑</kbd>/<kbd>↓</kbd> pick · <kbd>Enter</kbd> move into the match · <kbd>Esc</kbd> exit.
+**Fuzzy search** — open it with <kbd>/</kbd> from the Inbox, or just start typing while the Navigator is focused. Type to match folders anywhere under the root · <kbd>↑</kbd>/<kbd>↓</kbd> pick · <kbd>Enter</kbd> move into the match · <kbd>Shift</kbd>+<kbd>D</kbd> copy into it · <kbd>Esc</kbd> exit.
 
 You can also **click** any Sort Target or Navigator row to act on it, and **right-click** an inbox item for the context menu.
 
@@ -227,6 +234,7 @@ Open **Settings** with the cog in the header. Changes persist to **`config.toml`
 | Default sort order | ascending · descending | descending |
 | Default filter | all · images · videos | all |
 | Video autoplay / loop / muted | on / off | on |
+| Check for updates on launch | on / off | on |
 | Theme | Comfy Dark · Nord · Gruvbox · Catppuccin | Comfy Dark |
 
 Set **default folders** and comfysort auto-loads that session on launch. Only the collision policy drives backend behavior (threaded into move/copy — trash and folder-delete always rename); the rest are read by the frontend. A button in Settings opens `config.toml` in your editor.
@@ -285,5 +293,5 @@ Released under the **[MIT License](LICENSE)** — © 2026 kpg-anon.
 ---
 
 <div align="center">
-<sub>A calm place to sort your media. Preview the file. Press a key. <kbd>u</kbd> to undo.</sub>
+<sub>A calm place to sort your media. Preview the file. Press a key. <kbd>Ctrl</kbd>+<kbd>U</kbd> to undo.</sub>
 </div>
