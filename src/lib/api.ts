@@ -90,6 +90,15 @@ export const api = {
   bindFolder: (path: string, hotkey: string): Promise<Destination[]> =>
     invoke("bind_folder", { path, hotkey }),
 
+  bindPath: (path: string, hotkey: string): Promise<Destination[]> =>
+    invoke("bind_path", { path, hotkey }),
+
+  renameFolder: (path: string, newName: string): Promise<FolderListing> =>
+    invoke("rename_folder", { path, newName }),
+
+  revertOp: (source: string, resolved: string): Promise<OpOutcome> =>
+    invoke("revert_op", { source, resolved }),
+
   unbindHotkey: (hotkey: string): Promise<Destination[]> =>
     invoke("unbind_hotkey", { hotkey }),
 
@@ -125,6 +134,7 @@ export interface Settings {
   videoAutoplay: boolean;
   videoLoop: boolean;
   videoMuted: boolean;
+  autoUpdateCheck: boolean;
   theme: string;
   defaultInput: string;
   defaultOutput: string;
@@ -140,6 +150,7 @@ export const DEFAULT_SETTINGS: Settings = {
   videoAutoplay: true,
   videoLoop: true,
   videoMuted: true,
+  autoUpdateCheck: true,
   theme: "comfy-dark",
   defaultInput: "",
   defaultOutput: "",

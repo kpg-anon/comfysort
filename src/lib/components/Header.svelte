@@ -48,6 +48,7 @@
       <span class="txt">{session.output ? leaf(session.output) : ""}</span>
     </button>
     <span class="brand">comfysort{version ? ` ${version}` : ""}</span>
+    <button class="cog nf" title="Action history" onclick={() => session.toggleHistory()}>{I.history}</button>
     <button class="cog nf" title="Settings" onclick={() => settings.toggleOpen()}>{I.cog}</button>
   </div>
 </header>

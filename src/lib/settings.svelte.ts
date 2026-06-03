@@ -14,6 +14,7 @@ class SettingsStore {
   videoAutoplay = $state(DEFAULT_SETTINGS.videoAutoplay);
   videoLoop = $state(DEFAULT_SETTINGS.videoLoop);
   videoMuted = $state(DEFAULT_SETTINGS.videoMuted);
+  autoUpdateCheck = $state(DEFAULT_SETTINGS.autoUpdateCheck);
   theme = $state(DEFAULT_SETTINGS.theme);
   defaultInput = $state(DEFAULT_SETTINGS.defaultInput);
   defaultOutput = $state(DEFAULT_SETTINGS.defaultOutput);
@@ -33,6 +34,7 @@ class SettingsStore {
       videoAutoplay: this.videoAutoplay,
       videoLoop: this.videoLoop,
       videoMuted: this.videoMuted,
+      autoUpdateCheck: this.autoUpdateCheck,
       theme: this.theme,
       defaultInput: this.defaultInput,
       defaultOutput: this.defaultOutput,
@@ -48,6 +50,7 @@ class SettingsStore {
     this.videoAutoplay = s.videoAutoplay;
     this.videoLoop = s.videoLoop;
     this.videoMuted = s.videoMuted;
+    this.autoUpdateCheck = s.autoUpdateCheck;
     this.theme = s.theme;
     this.defaultInput = s.defaultInput;
     this.defaultOutput = s.defaultOutput;

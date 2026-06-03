@@ -1,36 +1,72 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
+  import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
+  import type { Destination } from "$lib/api";
 
-  // Only render slots that are actually bound (trash is always present). The
-  // pane grows downward as binds are added, leaving the Navigator more room.
-  const targets = $derived(session.sortedTargets);
-  const hasUserBinds = $derived(targets.some((d) => !d.isTrash));
+  // Numbered binds (1–9) sit on top; the =, − and trash slots form a fixed group
+  // below a dashed separator. = defaults to an "Archive" slot, − to unused.
+  const numbered = $derived(
+    session.sortedTargets.filter((d) => d.hotkey && d.hotkey >= "1" && d.hotkey <= "9"),
+  );
+  const trash = $derived(session.sortedTargets.find((d) => d.isTrash) ?? null);
+  const eqDest = $derived(session.destForHotkey("=") ?? null);
+  const dashDest = $derived(session.destForHotkey("-") ?? null);
+  const hasUserBinds = $derived(numbered.length > 0 || !!eqDest || !!dashDest);
 </script>
+
+{#snippet boundSlot(dest: Destination)}
+  <div class="slot">
+    <span class="key">{dest.hotkey}</span>
+    <span class="nf icon">{I.folder}</span>
+    <button class="label" title={dest.path} disabled={!session.current}
+      onclick={() => session.moveToDest(dest)}>{dest.label}</button>
+    <span class="count">({dest.mediaCount})</span>
+    <button class="unbind nf" title="Unbind {dest.hotkey}" onclick={() => session.unbind(dest.hotkey!)}>{I.close}</button>
+  </div>
+{/snippet}
+
+{#snippet specialSlot(key: string, dest: Destination | null, fallback: string)}
+  {#if dest}
+    {@render boundSlot(dest)}
+  {:else}
+    <button class="slot placeholder" title="Set in Settings → Sort targets" onclick={() => settings.toggleOpen()}>
+      <span class="key dim">{key}</span>
+      <span class="nf icon dim">{I.folder}</span>
+      <span class="label dim">{fallback}</span>
+      <span class="count"></span>
+      <span class="spacer"></span>
+    </button>
+  {/if}
+{/snippet}
 
 <section class="pane">
   <div class="title">「 Sort Targets 」</div>
   <div class="list">
-    {#each targets as dest, i (dest.path)}
-      {#if dest.isTrash && i > 0}<div class="sep" aria-hidden="true"></div>{/if}
-      <div class="slot" class:trash={dest.isTrash}>
-        <span class="key" class:trashkey={dest.isTrash}>{dest.hotkey}</span>
-        <span class="nf icon">{dest.isTrash ? I.trash : I.folder}</span>
-        <button class="label" title={dest.path} disabled={!session.current}
-          onclick={() => session.moveToDest(dest)}>{dest.label}</button>
-        <span class="count">({dest.mediaCount})</span>
-        {#if !dest.isTrash}
-          <button class="unbind nf" title="Unbind {dest.hotkey}" onclick={() => session.unbind(dest.hotkey!)}>{I.close}</button>
-        {:else}
-          <span class="spacer"></span>
-        {/if}
-      </div>
+    {#each numbered as dest (dest.path)}
+      {@render boundSlot(dest)}
     {/each}
+
+    <div class="sep" aria-hidden="true"></div>
+
+    {@render specialSlot("=", eqDest, "Archive")}
+    {@render specialSlot("-", dashDest, "(unused)")}
+
+    {#if trash}
+      <div class="slot trash">
+        <span class="key trashkey">{trash.hotkey}</span>
+        <span class="nf icon">{I.trash}</span>
+        <button class="label" title={trash.path} disabled={!session.current}
+          onclick={() => session.moveToDest(trash)}>{trash.label}</button>
+        <span class="count">({trash.mediaCount})</span>
+        <span class="spacer"></span>
+      </div>
+    {/if}
   </div>
   {#if !hasUserBinds}
     <div class="hint">
       <span class="nf">{I.tag}</span>
-      bind a folder: focus the Navigator, highlight it, press ⇧1-9
+      bind a folder: focus the Navigator, highlight it, press ⇧1-9 — or set any folder in Settings
     </div>
   {/if}
 </section>
@@ -54,6 +90,9 @@
   }
   .slot:hover { background: var(--bg-panel-alt); }
   .sep { border-top: 1px dashed var(--border); margin: 3px 8px; }
+  .placeholder { font: inherit; text-align: left; width: 100%; cursor: pointer; }
+  .placeholder .key.dim, .placeholder .icon.dim, .placeholder .label.dim { opacity: 0.5; }
+  .placeholder .label.dim { color: var(--text-muted); }
   .key {
     display: inline-grid; place-items: center;
     width: 20px; height: 20px; border-radius: var(--radius-sm);

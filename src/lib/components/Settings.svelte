@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings } from "$lib/settings.svelte";
+  import { session } from "$lib/session.svelte";
   import { I } from "$lib/icons";
   import { THEMES } from "$lib/themes";
   import type { Settings } from "$lib/api";
@@ -130,6 +131,40 @@
           {@render toggleRow("Loop", "Restart the video when it ends.", settings.videoLoop, "videoLoop")}
           {@render toggleRow("Muted", "Mute video preview audio.", settings.videoMuted, "videoMuted")}
         </section>
+
+        <section>
+          <h3>Updates</h3>
+          {@render toggleRow(
+            "Check for updates on launch",
+            "Notify when a newer version is available and offer a one-click update.",
+            settings.autoUpdateCheck,
+            "autoUpdateCheck",
+          )}
+        </section>
+
+        {#if session.output}
+          <section>
+            <h3>Sort targets</h3>
+            <p class="note">Bind a hotkey to any folder — including folders outside the destination root. (⇧+digit on a highlighted folder in the Navigator still works for folders under the root.)</p>
+            {#each ["1", "2", "3", "4", "5", "6", "7", "8", "9", "=", "-"] as key}
+              {@const d = session.destForHotkey(key)}
+              <div class="row">
+                <div class="meta">
+                  <div class="name">[{key}] {d ? d.label : key === "=" ? "Archive" : "(unused)"}</div>
+                  <div class="desc">{d ? d.path : "not set"}</div>
+                </div>
+                <div class="pathctl">
+                  <button class="pathbtn" class:set={!!d} title={d ? d.path : "Choose a folder"} onclick={() => session.bindSlotViaPicker(key)}>
+                    {d ? "Change…" : "Set folder…"}
+                  </button>
+                  {#if d}
+                    <button class="pathx nf" title="Clear binding" onclick={() => session.unbind(key)}>{I.close}</button>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </section>
+        {/if}
       </div>
 
       <footer>

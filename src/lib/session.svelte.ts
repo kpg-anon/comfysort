@@ -34,6 +34,17 @@ export interface CrossPrompt {
 /** Hotkey slots that can be bound (mirrors the TUI's `is_bindable_hotkey`). */
 export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
 
+/** One recorded session operation, shown in the action-history popup. */
+export interface HistoryEntry {
+  id: number;
+  kind: OpKind;
+  fileName: string;
+  sourcePath: string;
+  resolvedPath: string;
+  time: number;
+  reverted: boolean;
+}
+
 // Reused across the whole inbox sort. `localeCompare` builds a collator on every
 // call (very slow over 25k items); a single cached collator is far cheaper and
 // `numeric` gives natural ordering (file2 before file10).
@@ -104,6 +115,15 @@ class SessionStore {
 
   // Right-click context menu on an inbox item.
   ctx = $state<{ x: number; y: number; item: MediaItem } | null>(null);
+  // Right-click context menu on a navigator folder.
+  navCtx = $state<{ x: number; y: number; folder: FolderEntry } | null>(null);
+  // Inline folder rename: the navigator row whose path matches shows an input.
+  renamingPath = $state<string | null>(null);
+
+  // Action history for this session + popup visibility.
+  history = $state<HistoryEntry[]>([]);
+  showHistory = $state(false);
+  #histId = 0;
 
   view = $derived.by<MediaItem[]>(() => {
     let items = this.allItems;
@@ -430,6 +450,90 @@ class SessionStore {
     }
   }
 
+  // ---- Navigator context menu, folder rename, history ----------------------
+
+  openNavContext(e: MouseEvent, folder: FolderEntry) {
+    e.preventDefault();
+    this.focusNavigator();
+    this.navCtx = { x: e.clientX, y: e.clientY, folder };
+  }
+  closeNavContext() {
+    if (this.navCtx) this.navCtx = null;
+  }
+  /** Open a folder in the OS file explorer. */
+  async openFolderExternally(path: string) {
+    this.closeNavContext();
+    try {
+      await openPath(path);
+    } catch (e) {
+      this.setStatus(`Open failed: ${e}`, "bad");
+    }
+  }
+  startRename(folder: FolderEntry) {
+    this.closeNavContext();
+    this.renamingPath = folder.path;
+  }
+  cancelRename() {
+    this.renamingPath = null;
+  }
+  async commitRename(folder: FolderEntry, name: string) {
+    this.renamingPath = null;
+    const clean = name.trim();
+    if (!clean || clean === folder.name) return;
+    try {
+      this.nav = await api.renameFolder(folder.path, clean);
+      this.setStatus(`Renamed to ${clean}`, "good");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+
+  /** Pick any folder on disk and bind it to a slot — used by the Settings sort-
+   *  target editor, which (unlike in-app ⇧+digit) allows folders outside the root. */
+  async bindSlotViaPicker(hotkey: string) {
+    const dir = await api.pickDirectory(`Choose a folder to bind to [${hotkey}]`);
+    if (!dir) return;
+    try {
+      this.destinations = await api.bindPath(dir, hotkey);
+      this.setStatus(`Bound [${hotkey}]`, "good");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+
+  toggleHistory() {
+    this.showHistory = !this.showHistory;
+  }
+  private recordHistory(out: OpOutcome) {
+    if (out.kind === "undo") return; // don't log undo/revert as their own entries
+    const entry: HistoryEntry = {
+      id: ++this.#histId,
+      kind: out.kind,
+      fileName: baseName(out.sourcePath),
+      sourcePath: out.sourcePath,
+      resolvedPath: out.resolvedPath,
+      time: Date.now(),
+      reverted: false,
+    };
+    this.history = [entry, ...this.history].slice(0, 200);
+  }
+  /** Revert one past op individually (move/trash → back to inbox; copy → remove
+   *  the duplicate). Independent of the LIFO undo stack. */
+  async revertEntry(entry: HistoryEntry) {
+    if (entry.reverted) return;
+    try {
+      const out = await api.revertOp(entry.sourcePath, entry.resolvedPath);
+      this.applyOutcome(out);
+      this.history = this.history.map((h) => (h.id === entry.id ? { ...h, reverted: true } : h));
+      this.setStatus(out.message, "good");
+      this.scheduleNavRefresh();
+      if (this.searching) this.refreshSearchCounts();
+      this.fetchDisk();
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+
   // ---- Navigator -----------------------------------------------------------
 
   get navHasParent(): boolean {
@@ -700,6 +804,7 @@ class SessionStore {
       for (const p of paths) {
         last = await op(p);
         if (last.sourceRemoved) removed.add(last.sourcePath);
+        this.recordHistory(last);
         done++;
       }
       // Single removal pass + one view re-derivation, instead of rebuilding the

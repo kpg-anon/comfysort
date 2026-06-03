@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { settings } from "$lib/settings.svelte";
 
-  type State = "idle" | "available" | "downloading" | "ready" | "error";
-  let state = $state<State>("idle");
+  type Phase = "idle" | "available" | "downloading" | "ready" | "error";
+  let phase: Phase = $state("idle");
   let version = $state("");
   let notes = $state("");
   let progress = $state(0); // 0..100
@@ -13,6 +14,12 @@
   let update: any = null;
 
   onMount(async () => {
+    // Respect the "check for updates on launch" setting (load it first if the
+    // app just started and config.toml hasn't been read yet).
+    if (!settings.loaded) {
+      try { await settings.load(); } catch { /* keep defaults */ }
+    }
+    if (!settings.autoUpdateCheck) return;
     // The updater only resolves in the packaged app against the public release
     // endpoint. In dev, offline, or when no newer release is published, this
     // throws or returns null — fail silently rather than nag the user.
@@ -23,7 +30,7 @@
         update = found;
         version = found.version;
         notes = (found.body ?? "").trim();
-        state = "available";
+        phase = "available";
       }
     } catch (e) {
       console.debug("[updater] check skipped:", e);
@@ -32,7 +39,7 @@
 
   async function install() {
     if (!update) return;
-    state = "downloading";
+    phase = "downloading";
     let total = 0;
     let got = 0;
     try {
@@ -50,12 +57,12 @@
             break;
         }
       });
-      state = "ready";
+      phase = "ready";
       const { relaunch } = await import("@tauri-apps/plugin-process");
       await relaunch();
     } catch (e) {
       errorMsg = String(e);
-      state = "error";
+      phase = "error";
     }
   }
 
@@ -63,9 +70,9 @@
   const shortNotes = $derived(notes.length > 220 ? notes.slice(0, 217) + "…" : notes);
 </script>
 
-{#if state !== "idle" && !dismissed}
+{#if phase !== "idle" && !dismissed}
   <div class="upd" role="status">
-    {#if state === "available"}
+    {#if phase === "available"}
       <div class="head">
         <span class="dot"></span>
         <span class="title">Update available — <b>v{version}</b></span>
@@ -75,13 +82,13 @@
         <button class="btn go" onclick={install}>Update now</button>
         <button class="btn ghost" onclick={() => (dismissed = true)}>Later</button>
       </div>
-    {:else if state === "downloading"}
+    {:else if phase === "downloading"}
       <div class="head"><span class="title">Downloading v{version}…</span></div>
       <div class="bar"><div class="fill" style="width:{progress}%"></div></div>
       <p class="notes">{progress}% — the app will restart when it's done.</p>
-    {:else if state === "ready"}
+    {:else if phase === "ready"}
       <div class="head"><span class="title">Restarting to finish update…</span></div>
-    {:else if state === "error"}
+    {:else if phase === "error"}
       <div class="head"><span class="title err">Update failed</span></div>
       <p class="notes">{errorMsg}</p>
       <div class="row"><button class="btn ghost" onclick={() => (dismissed = true)}>Dismiss</button></div>

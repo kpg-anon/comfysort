@@ -97,6 +97,33 @@ impl PersistedBindings {
         self.hotkeys.remove(&hotkey.to_string());
     }
 
+    /// Rewrite any binding pointing at `old_abs` (or nested under it) to point at
+    /// `new_abs`, keeping the stored form relative to the output root where it
+    /// was before. Used when a bound folder is renamed.
+    pub fn rename_under(&mut self, old_abs: &Path, new_abs: &Path, output_root: &Path) {
+        let mut updated = BTreeMap::new();
+        for (key, relative) in &self.hotkeys {
+            let abs = if relative.is_absolute() {
+                relative.clone()
+            } else {
+                output_root.join(relative)
+            };
+            let moved = if abs == old_abs {
+                new_abs.to_path_buf()
+            } else if let Ok(suffix) = abs.strip_prefix(old_abs) {
+                new_abs.join(suffix)
+            } else {
+                abs
+            };
+            let stored = moved
+                .strip_prefix(output_root)
+                .map(PathBuf::from)
+                .unwrap_or(moved);
+            updated.insert(key.clone(), stored);
+        }
+        self.hotkeys = updated;
+    }
+
     /// Drop every entry pointing at `absolute_path` or anything nested under
     /// it. Used when a folder is deleted so its hotkey doesn't reappear on
     /// the next launch pointing at a path that no longer exists.

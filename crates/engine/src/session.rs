@@ -426,10 +426,20 @@ impl Session {
     /// the matching destination or pushes a new one for a nested folder, and
     /// persists the binding. Returns the refreshed destination list.
     pub fn bind_folder(&mut self, path: &Path, hotkey: char) -> anyhow::Result<Vec<DestinationDto>> {
+        let path = self.clamp_to_output(path);
+        self.bind_resolved(path, hotkey)
+    }
+
+    /// Bind an absolute path that may live *outside* the output root (used by the
+    /// Settings sort-target editor, where the user can target any folder on disk).
+    pub fn bind_path(&mut self, path: &Path, hotkey: char) -> anyhow::Result<Vec<DestinationDto>> {
+        self.bind_resolved(path.to_path_buf(), hotkey)
+    }
+
+    fn bind_resolved(&mut self, path: PathBuf, hotkey: char) -> anyhow::Result<Vec<DestinationDto>> {
         if !is_bindable_hotkey(hotkey) {
             anyhow::bail!("bind hotkey must be 1-9, -, or =");
         }
-        let path = self.clamp_to_output(path);
         let key = hotkey.to_string();
 
         // Strip the hotkey from any destination currently holding it so the
@@ -442,7 +452,7 @@ impl Session {
         if let Some(existing) = self
             .destinations
             .iter_mut()
-            .find(|d| Path::new(&d.path) == path)
+            .find(|d| Path::new(&d.path) == path.as_path())
         {
             existing.hotkey = Some(key);
         } else {
@@ -466,6 +476,88 @@ impl Session {
             &format!("bind: [{hotkey}] -> {}", path.display()),
         );
         Ok(self.refreshed_destinations())
+    }
+
+    /// Rename a folder under the output tree in place. Refuses the root, the
+    /// state dir, and the trash dir; refuses if the target name already exists.
+    /// Updates any in-memory destination + persisted binding pointing at the old
+    /// path, then returns the refreshed listing of the parent directory.
+    pub fn rename_folder(&mut self, path: &Path, new_name: &str) -> anyhow::Result<FolderListing> {
+        let clean = new_name.trim();
+        if clean.is_empty() || clean.contains(['/', '\\']) {
+            anyhow::bail!("invalid folder name");
+        }
+        let state = self.output.join(STATE_DIR);
+        let trash = trash_dir(&self.output);
+        if path == self.output {
+            anyhow::bail!("refusing to rename the output root");
+        }
+        if path == state || path.starts_with(&state) {
+            anyhow::bail!("refusing to rename the .comfysort state directory");
+        }
+        if path == trash {
+            anyhow::bail!("refusing to rename the trash directory");
+        }
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("folder has no parent"))?
+            .to_path_buf();
+        let target = parent.join(clean);
+        if target.exists() {
+            anyhow::bail!("a folder named \"{clean}\" already exists here");
+        }
+        std::fs::rename(path, &target)?;
+        for dest in self.destinations.iter_mut() {
+            if Path::new(&dest.path) == path {
+                dest.path = target.to_string_lossy().into_owned();
+                dest.label = clean.to_owned();
+            }
+        }
+        self.user_bindings.rename_under(path, &target, &self.output);
+        if let Err(err) = self.user_bindings.save(&self.output) {
+            log(&self.output, &format!("persist bindings failed during rename: {err}"));
+        }
+        log(
+            &self.output,
+            &format!("rename: {} -> {}", path.display(), target.display()),
+        );
+        self.list_folders(&parent)
+    }
+
+    /// Revert one specific past operation (per-file undo from the history view).
+    /// A reverted move/trash restores the file to the inbox; a reverted copy
+    /// removes the duplicate. `source`/`resolved` identify the recorded op.
+    pub fn revert_op(&mut self, source: &Path, resolved: &Path) -> anyhow::Result<OpOutcome> {
+        let kind = self.engine.revert_specific(source, resolved)?;
+        // The folder the file left loses one (mirrors undo's count handling).
+        if let Some(left) = resolved.parent() {
+            self.bump_dest_count(left, -1);
+        }
+        log(
+            &self.output,
+            &format!("revert {:?}: {} -> {}", kind, resolved.display(), source.display()),
+        );
+        match kind {
+            OperationKind::Copy => Ok(self.outcome(
+                OpKind::Undo,
+                "Reverted — removed copy".to_owned(),
+                resolved,
+                resolved,
+                false,
+                None,
+            )),
+            _ => {
+                let restored = MediaItemDto::from_path(source);
+                Ok(self.outcome(
+                    OpKind::Undo,
+                    "Reverted — restored to inbox".to_owned(),
+                    resolved,
+                    source,
+                    false,
+                    restored,
+                ))
+            }
+        }
     }
 
     /// Clear a hotkey binding. A scanned top-level folder just loses its hotkey;

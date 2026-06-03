@@ -202,6 +202,40 @@ impl OperationEngine {
         Ok(last)
     }
 
+    /// Reverse one specific completed move/copy (identified by its source +
+    /// resolved paths) wherever it sits on the stack — for per-file revert from
+    /// the history view. Uses the same safe primitives as `undo_last` and removes
+    /// the matching stack entry so a later `undo_last` won't reverse it again.
+    pub fn revert_specific(&mut self, source: &Path, resolved: &Path) -> anyhow::Result<OperationKind> {
+        let idx = self
+            .completed
+            .iter()
+            .position(|c| c.source_path == source && c.resolved_path == resolved)
+            .ok_or_else(|| anyhow::anyhow!("operation is no longer revertible this session"))?;
+        let kind = self.completed[idx].kind;
+        match kind {
+            OperationKind::Move => {
+                if source.exists() {
+                    anyhow::bail!("cannot revert: a file already exists at the original path");
+                }
+                relocate(resolved, source)?;
+                self.record(OperationKind::UndoMove, OperationStatus::Succeeded, resolved, source);
+            }
+            OperationKind::Copy => {
+                fs::remove_file(resolved)?;
+                self.record(OperationKind::UndoCopy, OperationStatus::Succeeded, resolved, resolved);
+            }
+            OperationKind::DeleteFolder
+            | OperationKind::UndoMove
+            | OperationKind::UndoCopy
+            | OperationKind::UndoDeleteFolder => {
+                anyhow::bail!("only move/copy/trash can be individually reverted");
+            }
+        }
+        self.completed.remove(idx);
+        Ok(kind)
+    }
+
     /// Resolve the final destination path, creating the directory and applying
     /// the collision policy (rename by default).
     fn plan(

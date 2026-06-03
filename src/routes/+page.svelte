@@ -12,6 +12,7 @@
   import Settings from "$lib/components/Settings.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import UpdateNotice from "$lib/components/UpdateNotice.svelte";
+  import HistoryPanel from "$lib/components/HistoryPanel.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -58,6 +59,7 @@
 
     // Any keypress dismisses an open context menu (the action still proceeds).
     if (session.ctx) session.closeContext();
+    if (session.navCtx) session.closeNavContext();
 
     // --- Global: F5 refreshes the inbox instead of reloading the webview
     //     (a page reload would drop the session back to the start screen). ---
@@ -77,6 +79,13 @@
     // --- Modal: settings overlay swallows app shortcuts (its own controls work) ---
     if (settings.open) {
       if (e.key === "Escape") { e.preventDefault(); settings.close(); }
+      return;
+    }
+
+    // --- Modal: history popup — Escape closes it ---
+    if (session.showHistory && e.key === "Escape") {
+      e.preventDefault();
+      session.toggleHistory();
       return;
     }
 
@@ -133,8 +142,9 @@
       return;
     }
 
-    // --- Global: fuzzy search (focuses the Navigator + opens search) ---
-    if (e.key === "/") {
+    // --- Inbox-only: "/" jumps to fuzzy folder search. In the Navigator you
+    //     just start typing (see navigatorKey), so "/" isn't needed there. ---
+    if (e.key === "/" && session.focus === "inbox") {
       e.preventDefault();
       session.startSearch();
       return;
@@ -190,6 +200,15 @@
   }
 
   function navigatorKey(e: KeyboardEvent) {
+    // Type-to-search: a plain letter opens fuzzy search seeded with that char, so
+    // the Navigator needs no "/". Digits stay as hotkey slots; modifiers pass
+    // through (Ctrl+N/D, Shift+digit bind).
+    if (e.key.length === 1 && /[a-z]/i.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      session.startSearch();
+      session.updateSearch(e.key);
+      return;
+    }
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -200,12 +219,10 @@
         session.navUp();
         break;
       case "ArrowRight":
-      case "l":
         e.preventDefault();
         session.navDrill();
         break;
       case "ArrowLeft":
-      case "h":
         e.preventDefault();
         session.navAscend();
         break;
@@ -276,6 +293,7 @@
 {/if}
 
 <UpdateNotice />
+<HistoryPanel />
 
 <style>
   .app {

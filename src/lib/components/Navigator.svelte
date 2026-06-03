@@ -82,6 +82,12 @@
       case "Escape": e.preventDefault(); session.exitSearch(); break;
     }
   }
+
+  // Autofocus + select the inline rename input when it mounts.
+  function focusOnMount(node: HTMLInputElement) {
+    node.focus();
+    node.select();
+  }
 </script>
 
 <section class="pane" class:focused>
@@ -151,20 +157,36 @@
         </button>
       {/if}
       {#each session.nav?.folders ?? [] as folder, fi (folder.path)}
-        <div class="row" class:cursor={focused && session.navCursor === rowIndex(fi)}>
-          <button class="drill" title={folder.path}
-            onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}>
+        <div class="row" class:cursor={focused && session.navCursor === rowIndex(fi)}
+          oncontextmenu={(e) => session.openNavContext(e, folder)}>
+          {#if session.renamingPath === folder.path}
             <span class="nf icon">{I.folder}</span>
-            <span class="name">{folder.name}</span>
-            {#if folder.subfolderCount > 0}<span class="sub">{folder.subfolderCount}▸</span>{/if}
-            <span class="count">({folder.mediaCount})</span>
-          </button>
-          <div class="acts">
-            <button class="act move nf" title="Move file here (Enter)" disabled={!session.current}
-              onclick={() => session.moveInto(folder)}>{I.arrowRight}</button>
-            <button class="act copy nf" title="Copy file here (Shift+D)" disabled={!session.current}
-              onclick={() => session.copyInto(folder)}>{I.copy}</button>
-          </div>
+            <input
+              class="rename"
+              value={folder.name}
+              use:focusOnMount
+              onkeydown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") { e.preventDefault(); session.commitRename(folder, e.currentTarget.value); }
+                else if (e.key === "Escape") { e.preventDefault(); session.cancelRename(); }
+              }}
+              onblur={(e) => { if (session.renamingPath === folder.path) session.commitRename(folder, e.currentTarget.value); }}
+            />
+          {:else}
+            <button class="drill" title={folder.path}
+              onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}>
+              <span class="nf icon">{I.folder}</span>
+              <span class="name">{folder.name}</span>
+              {#if folder.subfolderCount > 0}<span class="sub">{folder.subfolderCount}▸</span>{/if}
+              <span class="count">({folder.mediaCount})</span>
+            </button>
+            <div class="acts">
+              <button class="act move nf" title="Move file here (Enter)" disabled={!session.current}
+                onclick={() => session.moveInto(folder)}>{I.arrowRight}</button>
+              <button class="act copy nf" title="Copy file here (Shift+D)" disabled={!session.current}
+                onclick={() => session.copyInto(folder)}>{I.copy}</button>
+            </div>
+          {/if}
         </div>
       {/each}
       {#if session.creatingFolder}
@@ -179,6 +201,20 @@
       {/if}
     {/if}
   </div>
+
+  {#if session.navCtx}
+    <div class="ctx-backdrop" role="presentation"
+      onclick={() => session.closeNavContext()}
+      oncontextmenu={(e) => { e.preventDefault(); session.closeNavContext(); }}></div>
+    <div class="navctx" style="left:{session.navCtx.x}px; top:{session.navCtx.y}px">
+      <button onclick={() => session.openFolderExternally(session.navCtx!.folder.path)}>
+        <span class="nf">{I.folderOpen}</span> Open in Explorer
+      </button>
+      <button onclick={() => session.startRename(session.navCtx!.folder)}>
+        <span class="nf">{I.edit}</span> Rename…
+      </button>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -269,4 +305,24 @@
     color: var(--text-primary); padding: 4px 7px; font-family: var(--mono); font-size: 12px; outline: none;
   }
   .empty { padding: 16px 12px; color: var(--text-muted); text-align: center; font-size: 12px; }
+  .rename {
+    flex: 1; margin: 3px 6px; background: var(--bg-app);
+    border: 1px solid var(--purple); border-radius: var(--radius-sm);
+    color: var(--text-primary); padding: 4px 7px; font-size: 12.5px; outline: none;
+  }
+  .ctx-backdrop { position: fixed; inset: 0; z-index: 70; }
+  .navctx {
+    position: fixed; z-index: 71; min-width: 184px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+    padding: 4px; display: flex; flex-direction: column;
+  }
+  .navctx button {
+    display: flex; align-items: center; gap: 8px;
+    border: none; background: transparent; color: var(--text-secondary);
+    padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer;
+    font-size: 12.5px; text-align: left;
+  }
+  .navctx button:hover { background: var(--bg-panel-alt); color: var(--text-primary); }
+  .navctx .nf { color: var(--purple); font-size: 12px; width: 14px; text-align: center; }
 </style>

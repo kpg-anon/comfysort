@@ -32,6 +32,9 @@ pub struct Settings {
     pub video_loop: bool,
     #[serde(default = "default_true")]
     pub video_muted: bool,
+    /// Check GitHub Releases for a newer version on launch and offer to update.
+    #[serde(default = "default_true")]
+    pub auto_update_check: bool,
     #[serde(default = "default_theme")]
     pub theme: String,
     /// Optional default inbox/destination. When both are set, the app opens
@@ -73,6 +76,7 @@ impl Default for Settings {
             video_autoplay: true,
             video_loop: true,
             video_muted: true,
+            auto_update_check: true,
             theme: default_theme(),
             default_input: String::new(),
             default_output: String::new(),
@@ -138,6 +142,7 @@ mod tests {
             video_autoplay: false,
             video_loop: false,
             video_muted: false,
+            auto_update_check: false,
             theme: "nord".to_owned(),
             default_input: "C:/in".to_owned(),
             default_output: "C:/out".to_owned(),

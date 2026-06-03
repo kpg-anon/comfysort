@@ -14,8 +14,19 @@ use std::sync::Mutex;
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
-/// Absolute path to the persisted `config.toml` in the app's config dir.
+/// Absolute path to the persisted `config.toml`.
+///
+/// Portable mode: if a `portable` marker file sits next to the executable, keep
+/// `config.toml` beside the exe so the whole app travels in one folder. Otherwise
+/// (an installed build) use the per-user app config dir, which is always writable.
 fn config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if dir.join("portable").exists() {
+                return Ok(dir.join("config.toml"));
+            }
+        }
+    }
     let dir = app
         .path()
         .app_config_dir()
@@ -194,6 +205,43 @@ pub async fn bind_folder(
         .next()
         .ok_or_else(|| "hotkey is empty".to_string())?;
     with_session(&state, |s| s.bind_folder(&PathBuf::from(&path), key))
+}
+
+/// Bind an absolute folder path (which may live outside the output root) to a
+/// hotkey. Used by the Settings sort-target editor.
+#[tauri::command]
+pub async fn bind_path(
+    state: State<'_, AppState>,
+    path: String,
+    hotkey: String,
+) -> CmdResult<Vec<DestinationDto>> {
+    let key = hotkey
+        .chars()
+        .next()
+        .ok_or_else(|| "hotkey is empty".to_string())?;
+    with_session(&state, |s| s.bind_path(&PathBuf::from(&path), key))
+}
+
+/// Rename a folder in place; returns the refreshed listing of its parent.
+#[tauri::command]
+pub async fn rename_folder(
+    state: State<'_, AppState>,
+    path: String,
+    new_name: String,
+) -> CmdResult<FolderListing> {
+    with_session(&state, |s| s.rename_folder(&PathBuf::from(&path), &new_name))
+}
+
+/// Revert one specific past operation (per-file undo from the history view).
+#[tauri::command]
+pub async fn revert_op(
+    state: State<'_, AppState>,
+    source: String,
+    resolved: String,
+) -> CmdResult<OpOutcome> {
+    with_session(&state, |s| {
+        s.revert_op(&PathBuf::from(&source), &PathBuf::from(&resolved))
+    })
 }
 
 /// Clear a hotkey binding and return the refreshed destination list.

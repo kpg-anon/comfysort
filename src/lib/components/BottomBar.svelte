@@ -27,7 +27,7 @@
     ["⏎", "move here", "green"],
     ["⇧d", "copy", "cyan"],
     ["⇧1-9", "bind", "purple"],
-    ["/", "search", "purple"],
+    ["type", "search", "purple"],
     ["^d", "delete", "red"],
     ["^n", "new", "green"],
     ["^u", "undo", "orange"],
