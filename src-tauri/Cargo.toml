@@ -1,6 +1,6 @@
 [package]
 name = "comfysort"
-version = "0.3.1"
+version = "0.3.2"
 description = "A calm, preview-first desktop workstation for sorting media — fast."
 authors = ["kpg-anon"]
 license = "MIT"
@@ -29,6 +29,10 @@ comfysort-engine = { path = "../crates/engine" }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-process = "2"
+
+[target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 fs2 = "0.4"

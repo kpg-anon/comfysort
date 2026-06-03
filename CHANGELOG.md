@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-06-02
+
+### Added
+- **In-app updater** — comfysort checks GitHub Releases on launch and shows a notification when a newer version is available, with one-click **Update now** (downloads, installs, and relaunches). Updates are verified with a self-generated signing key — no paid code-signing certificate required. (Activates once the repo is public.)
+
 ## [0.3.1] — 2026-06-02
 
 ### Added
@@ -45,5 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.2
 [0.3.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.1

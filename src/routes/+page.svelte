@@ -11,6 +11,7 @@
   import StartScreen from "$lib/components/StartScreen.svelte";
   import Settings from "$lib/components/Settings.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
+  import UpdateNotice from "$lib/components/UpdateNotice.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -273,6 +274,8 @@
   <Settings />
   <ContextMenu />
 {/if}
+
+<UpdateNotice />
 
 <style>
   .app {

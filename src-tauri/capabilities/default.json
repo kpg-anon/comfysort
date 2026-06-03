@@ -8,6 +8,8 @@
     "core:app:allow-version",
     "opener:default",
     "dialog:default",
+    "updater:default",
+    "process:default",
     {
       "identifier": "opener:allow-open-path",
       "allow": [{ "path": "**" }]
