@@ -17,19 +17,46 @@
     const n = norm(p).replace(/\/+$/, "");
     return n.slice(n.lastIndexOf("/") + 1) || n;
   }
+
+  // One-shot spin on the refresh button as click feedback.
+  let refreshing = $state(false);
+  function doRefresh() {
+    refreshing = true;
+    session.refreshInbox();
+  }
+
+  // Inputs are a `;`-joined list; show a count when there's more than one.
+  const inputParts = $derived(
+    (session.input ?? "").split(";").map((s) => s.trim()).filter(Boolean),
+  );
+  const inputLabel = $derived(
+    inputParts.length > 1 ? `${inputParts.length} folders` : inputParts[0] ? norm(inputParts[0]) : "",
+  );
+  const inputTitle = $derived(
+    inputParts.length
+      ? "Inbox:\n" + inputParts.map(norm).join("\n") + "\n\nClick to choose a different folder"
+      : "Choose an inbox folder",
+  );
 </script>
 
 <header>
   <div class="left">
-    <button
-      class="chip input"
-      title={"Inbox: " + (session.input ?? "") + "\nClick to choose a different folder"}
-      onclick={() => session.changeInput()}
-    >
+    <button class="chip input" title={inputTitle} onclick={() => session.changeInput()}>
       <span class="nf gi">{I.inbox}</span>
-      <span class="txt">{session.input ? norm(session.input) : ""}</span>
+      <span class="txt">{inputLabel}</span>
     </button>
-    <button class="iconbtn nf" title="Rescan the inbox for new files (F5)" onclick={() => session.refreshInbox()}>{I.refresh}</button>
+    <button
+      class="iconbtn"
+      class:spinning={refreshing}
+      title="Rescan the inbox for new files (F5)"
+      onclick={doRefresh}
+      onanimationend={() => (refreshing = false)}
+    >
+      <span class="nf">{I.refresh}</span>
+    </button>
+    <button class="iconbtn" title="Add another inbox folder" onclick={() => session.addInputFolder()}>
+      <span class="nf">{I.folderPlus}</span>
+    </button>
   </div>
 
   {#if session.status}
@@ -92,6 +119,10 @@
     border-radius: 20px; cursor: pointer; font-size: 12px;
   }
   .iconbtn:hover { color: var(--purple); border-color: var(--purple); }
+  .iconbtn:active { transform: scale(0.9); }
+  .iconbtn .nf { display: inline-block; line-height: 1; }
+  .iconbtn.spinning .nf { animation: cs-spin 0.6s ease; }
+  @keyframes cs-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .gi { font-size: 12px; flex: none; opacity: 0.9; }
   .status {
     justify-self: center;

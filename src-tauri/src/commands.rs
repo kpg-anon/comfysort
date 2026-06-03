@@ -102,7 +102,7 @@ pub fn open_session(
     input: String,
     output: String,
 ) -> CmdResult<SessionView> {
-    let (session, view) = Session::open(PathBuf::from(input), PathBuf::from(output))
+    let (session, view) = Session::open(input, PathBuf::from(output))
         .map_err(|e| e.to_string())?;
     *state.session.lock().map_err(|_| "session lock poisoned")? = Some(session);
     Ok(view)

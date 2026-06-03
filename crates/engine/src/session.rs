@@ -19,8 +19,24 @@ fn is_bindable_hotkey(hotkey: char) -> bool {
     matches!(hotkey, '1'..='9' | '-' | '=')
 }
 
+/// Scan one or more `;`-separated input directories, merging their media into a
+/// single newest-first inbox. Empty segments are ignored.
+fn scan_inputs(input: &str) -> anyhow::Result<Vec<MediaItemDto>> {
+    let mut items = Vec::new();
+    for dir in input.split(';').map(str::trim).filter(|s| !s.is_empty()) {
+        items.extend(scan_inbox(Path::new(dir))?);
+    }
+    items.sort_by(|a, b| {
+        b.modified_ms
+            .cmp(&a.modified_ms)
+            .then_with(|| a.file_name.cmp(&b.file_name))
+    });
+    Ok(items)
+}
+
 pub struct Session {
-    input: PathBuf,
+    /// One or more `;`-separated input directories to triage.
+    input: String,
     output: PathBuf,
     destinations: Vec<DestinationDto>,
     engine: OperationEngine,
@@ -32,8 +48,8 @@ pub struct Session {
 
 impl Session {
     /// Open a session against the given roots, scanning inbox + destinations.
-    pub fn open(input: PathBuf, output: PathBuf) -> anyhow::Result<(Self, SessionView)> {
-        let inbox = scan_inbox(&input)?;
+    pub fn open(input: String, output: PathBuf) -> anyhow::Result<(Self, SessionView)> {
+        let inbox = scan_inputs(&input)?;
         let mut destinations = scan_destinations(&output)?;
         let engine = OperationEngine::new(journal_path(&output));
 
@@ -101,7 +117,7 @@ impl Session {
             &output,
             &format!(
                 "session open: input={} output={} destinations={} inbox={}",
-                input.display(),
+                input,
                 output.display(),
                 destinations.len(),
                 inbox.len()
@@ -112,7 +128,7 @@ impl Session {
         }
 
         let view = SessionView {
-            input: input.to_string_lossy().into_owned(),
+            input: input.clone(),
             output: output.to_string_lossy().into_owned(),
             inbox,
             destinations: destinations.clone(),
@@ -137,7 +153,7 @@ impl Session {
     /// Re-scan the input directory (e.g. after external changes) and return the
     /// fresh inbox. Destinations are left as-is; call after a manual refresh.
     pub fn rescan_inbox(&self) -> anyhow::Result<Vec<MediaItemDto>> {
-        Ok(scan_inbox(&self.input)?)
+        scan_inputs(&self.input)
     }
 
     /// List the immediate child folders of `dir` for the Navigator. `dir` is
@@ -746,7 +762,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
         assert_eq!(count_of(&session, &keep), 0);
 
         // Poison `other`'s in-memory count with a sentinel. If the op path did a
@@ -790,7 +806,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
         session.move_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -809,7 +825,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
         session.copy_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -827,7 +843,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.clone(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
         let trash = trash_dir(&output);
         assert_eq!(count_of(&session, &trash), 0);
 

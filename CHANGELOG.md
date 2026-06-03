@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-06-03
+
+### Added
+- **Multiple inbox folders** — once a session is open, the ＋ button beside the inbox folder adds more source folders; their media merges into one inbox.
+
+### Changed
+- The header refresh button animates on click for clearer feedback.
+- Settings: the "opens straight into them" note moved below the default folders as smaller subtext.
+
 ## [0.4.1] — 2026-06-03
 
 ### Added
@@ -85,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.2
 [0.4.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.0
 [0.3.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.2

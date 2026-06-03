@@ -92,9 +92,9 @@
             settings.autoUpdateCheck,
             "autoUpdateCheck",
           )}
-          <p class="note">When both default folders are set, the app opens straight into them and skips the start screen.</p>
           {@render pathRow("Default inbox", "Folder of media to sort on launch.", settings.defaultInput, "input")}
           {@render pathRow("Default destination", "Root whose child folders become sort targets.", settings.defaultOutput, "output")}
+          <p class="subnote">* When both default folders are set, the app opens straight into them and skips the start screen.</p>
         </section>
 
         <section>
@@ -207,6 +207,7 @@
   section:last-child { border-bottom: none; }
   h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--purple); }
   .note { margin: -4px 0 10px; font-size: 11px; color: var(--text-muted); }
+  .subnote { margin: 8px 0 0; font-size: 10px; color: var(--text-muted); opacity: 0.85; }
   .row {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
     padding: 7px 0;

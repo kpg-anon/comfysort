@@ -304,6 +304,19 @@ class SessionStore {
     const dir = await api.pickDirectory("Choose the inbox folder to sort");
     if (dir && this.output) await this.open(dir, this.output);
   }
+  /** Add another inbox folder to the live session. Inputs are `;`-joined and
+   *  re-scanned together; the launch flow stays single-folder. */
+  async addInputFolder() {
+    const dir = await api.pickDirectory("Add another inbox folder");
+    if (!dir || !this.input || !this.output) return;
+    const parts = this.input.split(";").map((s) => s.trim()).filter(Boolean);
+    if (parts.some((p) => normPath(p) === normPath(dir))) {
+      this.setStatus("That folder is already in the inbox", "info");
+      return;
+    }
+    await this.open([...parts, dir].join(";"), this.output);
+    this.setStatus(`Added ${baseName(dir)} — ${parts.length + 1} inbox folders`, "good");
+  }
   async changeOutput() {
     const dir = await api.pickDirectory("Choose the destination root");
     if (dir && this.input) await this.open(this.input, dir);
