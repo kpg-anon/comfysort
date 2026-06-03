@@ -26,6 +26,7 @@ export const I = {
   eye: "", // nf-fa-eye
   history: "", // nf-fa-history
   edit: "", // nf-fa-pencil_square_o (rename)
+  keyboard: "", // nf-fa-keyboard
 } as const;
 
 export function kindIcon(kind: MediaKind): string {

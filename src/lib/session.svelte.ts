@@ -615,10 +615,17 @@ class SessionStore {
     await this.moveTargetsTo(target, folder?.name);
   }
   async navCopy() {
-    const folder = this.navHighlighted;
-    if (!folder) return;
-    this.#navStickyPath = folder.path;
-    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, folder.path), false, "Copying");
+    // Target precedence: the highlighted search match, else the highlighted
+    // folder, else — when on ".." or nothing is highlighted — the directory
+    // you're currently in (mirrors Enter-to-move's behavior).
+    let target: string | undefined;
+    if (this.searching) target = this.searchSelected?.path;
+    else if (this.navHighlighted) target = this.navHighlighted.path;
+    else target = this.nav?.path;
+    if (!target) return;
+    const dir = target;
+    this.#navStickyPath = dir;
+    await this.runMany(this.targetPaths(), (p) => api.copyItem(p, dir), false, "Copying");
   }
   async moveInto(folder: FolderEntry) {
     this.#navStickyPath = folder.path;

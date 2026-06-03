@@ -16,14 +16,16 @@ use tauri_plugin_dialog::DialogExt;
 
 /// Absolute path to the persisted `config.toml`.
 ///
-/// Portable mode: if a `portable` marker file sits next to the executable, keep
-/// `config.toml` beside the exe so the whole app travels in one folder. Otherwise
-/// (an installed build) use the per-user app config dir, which is always writable.
+/// Portable mode: if a `config.toml` sits next to the executable, use it — the
+/// portable zip ships one, so the whole app (exe + config + WebView2 DLL) travels
+/// in a single folder. An installed build has no config beside its exe and falls
+/// back to the per-user app config dir, which is always writable.
 fn config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            if dir.join("portable").exists() {
-                return Ok(dir.join("config.toml"));
+            let beside = dir.join("config.toml");
+            if beside.exists() {
+                return Ok(beside);
             }
         }
     }
@@ -272,7 +274,14 @@ pub fn would_cross_volume(source: String, dest_dir: String) -> bool {
 /// config dir itself can't be resolved.
 #[tauri::command]
 pub fn get_settings(app: tauri::AppHandle) -> CmdResult<Settings> {
-    Ok(settings::load(&config_path(&app)?))
+    let path = config_path(&app)?;
+    let loaded = settings::load(&path);
+    // Materialize the file on first launch so it always exists to hand-edit
+    // (portable: beside the exe; installed: the per-user app config dir).
+    if !path.exists() {
+        let _ = settings::save(&path, &loaded);
+    }
+    Ok(loaded)
 }
 
 /// Absolute path to `config.toml` (so the frontend can open it in an editor).

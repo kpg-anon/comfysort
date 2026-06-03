@@ -60,6 +60,9 @@
     if (session.crossPrompt) return;
     e.stopPropagation();
     const el = e.currentTarget as HTMLInputElement;
+    // Shift+D copies into the highlighted match — the global handler can't see it
+    // while the search input holds focus.
+    if (e.shiftKey && e.key === "D") { e.preventDefault(); session.navCopy(); return; }
     switch (e.key) {
       case "ArrowDown": e.preventDefault(); session.searchDown(); break;
       case "ArrowUp": e.preventDefault(); session.searchUp(); break;
@@ -138,9 +141,9 @@
           </button>
           <div class="acts">
             <button class="act move nf" title="Move here (Enter)" disabled={!session.current}
-              onclick={() => session.moveInto(r)}>{I.arrowRight}</button>
-            <button class="act copy nf" title="Copy here" disabled={!session.current}
-              onclick={() => session.copyInto(r)}>{I.copy}</button>
+              onclick={() => { session.moveInto(r); searchEl?.focus(); }}>{I.arrowRight}</button>
+            <button class="act copy nf" title="Copy here (Shift+D)" disabled={!session.current}
+              onclick={() => { session.copyInto(r); searchEl?.focus(); }}>{I.copy}</button>
           </div>
         </div>
       {/each}

@@ -18,7 +18,7 @@
   <div class="scrim" role="presentation" onclick={() => settings.closeTargets()}></div>
   <div class="panel">
     <header>
-      <span class="nf hicon">{I.tag}</span>
+      <span class="nf hicon">{I.keyboard}</span>
       <h2>Sort targets</h2>
       <button class="x nf" title="Close (Esc)" onclick={() => settings.closeTargets()}>{I.close}</button>
     </header>

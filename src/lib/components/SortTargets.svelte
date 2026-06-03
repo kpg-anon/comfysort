@@ -15,9 +15,9 @@
   const hasUserBinds = $derived(numbered.length > 0 || !!eqDest || !!dashDest);
 </script>
 
-{#snippet boundSlot(dest: Destination)}
+{#snippet boundSlot(dest: Destination, special: boolean)}
   <div class="slot">
-    <span class="key">{dest.hotkey}</span>
+    <span class="key" class:special>{dest.hotkey}</span>
     <span class="nf icon">{I.folder}</span>
     <button class="label" title={dest.path} disabled={!session.current}
       onclick={() => session.moveToDest(dest)}>{dest.label}</button>
@@ -28,10 +28,10 @@
 
 {#snippet specialSlot(key: string, dest: Destination | null, fallback: string)}
   {#if dest}
-    {@render boundSlot(dest)}
+    {@render boundSlot(dest, true)}
   {:else}
     <button class="slot placeholder" title="Set in the sort-target editor" onclick={() => settings.openTargets()}>
-      <span class="key">{key}</span>
+      <span class="key special">{key}</span>
       <span class="nf icon">{I.folder}</span>
       <span class="label muted">{fallback}</span>
       <span class="count"></span>
@@ -44,7 +44,7 @@
   <div class="title">「 Sort Targets 」</div>
   <div class="list">
     {#each numbered as dest (dest.path)}
-      {@render boundSlot(dest)}
+      {@render boundSlot(dest, false)}
     {/each}
 
     <div class="sep" aria-hidden="true"></div>
@@ -60,7 +60,7 @@
       </div>
     {/if}
     <!-- − only appears once the user binds it (in the sort-target editor). -->
-    {#if dashDest}{@render boundSlot(dashDest)}{/if}
+    {#if dashDest}{@render boundSlot(dashDest, true)}{/if}
     {@render specialSlot("=", eqDest, "Archive")}
   </div>
   {#if !hasUserBinds}
@@ -89,7 +89,7 @@
     font-size: 12.5px;
   }
   .slot:hover { background: var(--bg-panel-alt); }
-  .sep { border-top: 1px dashed var(--text-muted); margin: 6px 10px; }
+  .sep { height: 1px; background: color-mix(in srgb, var(--border), black 30%); border-radius: 1px; margin: 6px 10px; }
   .placeholder { font: inherit; text-align: left; width: 100%; cursor: pointer; }
   .placeholder .label.muted { color: var(--text-muted); }
   .key {
@@ -99,6 +99,7 @@
     color: var(--green); font-family: var(--mono); font-weight: 700; font-size: 11px;
   }
   .trashkey { color: var(--red); }
+  .key.special { color: var(--text-muted); }
   .icon { color: var(--yellow); font-size: 12px; text-align: center; }
   .trash .icon { color: var(--red); }
   .label {

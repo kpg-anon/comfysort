@@ -20,14 +20,17 @@
 </script>
 
 <header>
-  <button
-    class="chip input"
-    title={"Inbox: " + (session.input ?? "") + "\nClick to choose a different folder"}
-    onclick={() => session.changeInput()}
-  >
-    <span class="nf gi">{I.inbox}</span>
-    <span class="txt">{session.input ? norm(session.input) : ""}</span>
-  </button>
+  <div class="left">
+    <button
+      class="chip input"
+      title={"Inbox: " + (session.input ?? "") + "\nClick to choose a different folder"}
+      onclick={() => session.changeInput()}
+    >
+      <span class="nf gi">{I.inbox}</span>
+      <span class="txt">{session.input ? norm(session.input) : ""}</span>
+    </button>
+    <button class="iconbtn nf" title="Rescan the inbox for new files (F5)" onclick={() => session.refreshInbox()}>{I.refresh}</button>
+  </div>
 
   {#if session.status}
     <div class="status status-{session.statusKind}" class:busy={session.busy}>
@@ -79,8 +82,16 @@
     font-size: 12px;
   }
   .chip .txt { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .input { justify-self: start; color: var(--purple); }
+  .left { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+  .input { min-width: 0; color: var(--purple); }
   .input:hover { border-color: var(--purple); }
+  .iconbtn {
+    display: grid; place-items: center; flex: none;
+    width: 28px; height: 28px; padding: 0;
+    border: 1px solid transparent; background: var(--bg-chip); color: var(--text-muted);
+    border-radius: 20px; cursor: pointer; font-size: 12px;
+  }
+  .iconbtn:hover { color: var(--purple); border-color: var(--purple); }
   .gi { font-size: 12px; flex: none; opacity: 0.9; }
   .status {
     justify-self: center;

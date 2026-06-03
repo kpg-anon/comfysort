@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-06-03
+
+### Added
+- A refresh button beside the inbox folder in the header to rescan for new files (previously only via the inbox right-click menu).
+
+### Changed
+- The `=` / `−` sort slots are greyed to set them apart from the numbered targets, under a cleaner bar separator.
+- The sort-target editor opens in its own panel; "check for updates on launch" moved into Startup settings.
+- Portable build now ships `config.toml` beside the executable (alongside the WebView2 loader), so settings travel with the app and the file always exists to edit.
+
+### Fixed
+- `Shift+D` copies into the target folder — whether you've drilled into it or have a fuzzy-search match selected.
+- Fuzzy search no longer accepts only one character at a time after a copy.
+
 ## [0.4.0] — 2026-06-03
 
 ### Added
@@ -71,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.0
 [0.3.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.2
 [0.3.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.1

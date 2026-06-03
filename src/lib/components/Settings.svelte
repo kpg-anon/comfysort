@@ -143,7 +143,7 @@
             <h3>Sort targets</h3>
             <p class="note">Bind hotkey slots to any folder — including folders outside the destination root.</p>
             <button class="openconf" onclick={() => settings.openTargets()}>
-              <span class="nf">{I.tag}</span> Open sort-target editor
+              <span class="nf">{I.keyboard}</span> Open sort-target editor
             </button>
           </section>
         {/if}

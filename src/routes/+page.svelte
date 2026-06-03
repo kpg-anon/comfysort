@@ -212,8 +212,10 @@
     // through (Ctrl+N/D, Shift+digit bind).
     if (e.key.length === 1 && /[a-z]/i.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
-      session.startSearch();
-      session.updateSearch(e.key);
+      // Append when a search is already open (e.g. focus moved to a result button
+      // after a copy) — otherwise each keystroke would reset to a single char.
+      if (session.searching) session.updateSearch(session.searchQuery + e.key);
+      else { session.startSearch(); session.updateSearch(e.key); }
       return;
     }
     switch (e.key) {
