@@ -14,9 +14,10 @@ vite.config.ts.timestamp-*
 /src-tauri/target
 /src-tauri/gen/schemas
 
-# Updater signing key — NEVER commit (free self-generated key; pubkey lives in tauri.conf.json)
+# Updater signing key + passphrase — NEVER commit (pubkey lives in tauri.conf.json)
 /.tauri-updater.key
 /.tauri-updater.key.pub
+/.tauri-updater.pass
 
 # comfysort debug logs
 *.log

@@ -42,7 +42,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY2QjRGMTZCODNBM0E4OQpSV1NKT2pxNEZrOXJEK3hIckVwRlVPdmt6L2E2Z0ttbXNtTnZzTERPR1VwSFdUSm5aWk5vSWxnbAo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYxMkFDQjMyNTdDOTM3QTYKUldTbU44bFhNc3NxWVd1UWp6aVAyQmZjS3pFZVFkWmRycjdZUjVtMnEyQlF6WklCZHdDMlRZUGQK",
       "endpoints": [
         "https://github.com/kpg-anon/comfysort/releases/latest/download/latest.json"
       ],
