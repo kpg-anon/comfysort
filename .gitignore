@@ -31,3 +31,6 @@ vite.config.ts.timestamp-*
 
 # Agent/contributor entry (local-only; harness-neutral front door)
 /AGENTS.md
+
+# Private build/release toolchain (not for public consumption)
+/scripts/

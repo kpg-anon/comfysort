@@ -10,18 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.2] — 2026-06-02
 
 ### Added
-- **In-app updater** — comfysort checks GitHub Releases on launch and shows a notification when a newer version is available, with one-click **Update now** (downloads, installs, and relaunches). Updates are verified with a self-generated signing key — no paid code-signing certificate required. (Activates once the repo is public.)
+- **In-app updater** — comfysort checks for new releases on launch and shows a notification when one is available, with one-click **Update now** (downloads, installs, and relaunches).
 
 ## [0.3.1] — 2026-06-02
 
 ### Added
-- New application icon, regenerated across every platform size and embedded in the standalone exe and installers.
-- MIT `LICENSE` file at the repo root.
-- Release automation in `scripts/`: `bump-version.ps1` (version across all manifests), `clean.ps1` (reclaim build artifacts), and `release.ps1` (bump → build → commit → tag → push → GitHub Release → prune).
-- GitHub Releases publishing with a **portable** zip alongside the NSIS/MSI installers, plus a Download section in the README.
+- New application icon across the app and installers.
+- MIT `LICENSE`.
+- Downloadable builds on the Releases page — installers plus a portable zip — and a Download section in the README.
 
 ### Changed
-- README overhaul: mascot hero moved to the top, "The loop" is now a rendered Mermaid diagram, and the interface mockup was replaced with prose + a screenshots placeholder.
+- README overhaul: new hero, a rendered "loop" diagram, and a cleaner structure.
 
 ## [0.3.0] — 2026-05-30
 
