@@ -14,6 +14,7 @@
   import UpdateNotice from "$lib/components/UpdateNotice.svelte";
   import HistoryPanel from "$lib/components/HistoryPanel.svelte";
   import SortTargetsEditor from "$lib/components/SortTargetsEditor.svelte";
+  import Tooltip from "$lib/components/Tooltip.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -304,6 +305,7 @@
 <UpdateNotice />
 <HistoryPanel />
 <SortTargetsEditor />
+<Tooltip />
 
 <style>
   .app {

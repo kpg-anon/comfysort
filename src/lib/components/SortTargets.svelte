@@ -2,6 +2,7 @@
   import { session } from "$lib/session.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
+  import { tip } from "$lib/tooltip.svelte";
   import type { Destination } from "$lib/api";
 
   // Numbered binds (1–9) sit on top; the =, − and trash slots form a fixed group
@@ -19,10 +20,10 @@
   <div class="slot">
     <span class="key" class:special>{dest.hotkey}</span>
     <span class="nf icon">{I.folder}</span>
-    <button class="label" title={dest.path} disabled={!session.current}
+    <button class="label" use:tip={dest.path} disabled={!session.current}
       onclick={() => session.moveToDest(dest)}>{dest.label}</button>
     <span class="count">({dest.mediaCount})</span>
-    <button class="unbind nf" title="Unbind {dest.hotkey}" onclick={() => session.unbind(dest.hotkey!)}>{I.close}</button>
+    <button class="unbind nf" use:tip={"Unbind " + dest.hotkey} onclick={() => session.unbind(dest.hotkey!)}>{I.close}</button>
   </div>
 {/snippet}
 
@@ -30,7 +31,7 @@
   {#if dest}
     {@render boundSlot(dest, true)}
   {:else}
-    <button class="slot placeholder" title="Set in the sort-target editor" onclick={() => settings.openTargets()}>
+    <button class="slot placeholder" use:tip={"Set in the sort-target editor"} onclick={() => settings.openTargets()}>
       <span class="key special">{key}</span>
       <span class="nf icon">{I.folder}</span>
       <span class="label muted">{fallback}</span>
@@ -53,7 +54,7 @@
       <div class="slot trash">
         <span class="key trashkey">{trash.hotkey}</span>
         <span class="nf icon">{I.trash}</span>
-        <button class="label" title={trash.path} disabled={!session.current}
+        <button class="label" use:tip={trash.path} disabled={!session.current}
           onclick={() => session.moveToDest(trash)}>{trash.label}</button>
         <span class="count">({trash.mediaCount})</span>
         <span class="spacer"></span>

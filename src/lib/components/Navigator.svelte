@@ -1,6 +1,7 @@
 <script lang="ts">
   import { session } from "$lib/session.svelte";
   import { I } from "$lib/icons";
+  import { tip } from "$lib/tooltip.svelte";
 
   let newName = $state("");
   let inputEl: HTMLInputElement | undefined = $state();
@@ -98,10 +99,10 @@
     <div class="title">「 Navigator{focused ? " *" : ""} 」</div>
     <div class="actions">
       {#if session.searching}
-        <button class="hbtn nf" title="Close search (Esc)" onclick={() => session.exitSearch()}>{I.close}</button>
+        <button class="hbtn nf" use:tip={"Close search (Esc)"} onclick={() => session.exitSearch()}>{I.close}</button>
       {:else}
-        <button class="hbtn nf" title="Fuzzy search folders (/)" onclick={() => session.startSearch()}>{I.search}</button>
-        <button class="hbtn nf" title="New folder here (Ctrl+N)" onclick={() => session.startNewFolder()}>{I.plus}</button>
+        <button class="hbtn nf" use:tip={"Fuzzy search folders"} onclick={() => session.startSearch()}>{I.search}</button>
+        <button class="hbtn nf" use:tip={"New folder here (Ctrl+N)"} onclick={() => session.startNewFolder()}>{I.plus}</button>
       {/if}
     </div>
   </div>
@@ -131,7 +132,7 @@
     {#if session.searching}
       {#each session.searchResults as r, i (r.path)}
         <div class="row" class:cursor={i === session.searchCursor}>
-          <button class="drill" title={r.path} onclick={() => session.searchDrill(r)}>
+          <button class="drill" use:tip={r.path} onclick={() => session.searchDrill(r)}>
             <span class="nf icon">{I.folder}</span>
             <span class="rname">
               <span class="name">{r.name}</span>
@@ -140,9 +141,9 @@
             <span class="count">({r.mediaCount})</span>
           </button>
           <div class="acts">
-            <button class="act move nf" title="Move here (Enter)" disabled={!session.current}
+            <button class="act move nf" use:tip={"Move here (Enter)"} disabled={!session.current}
               onclick={() => { session.moveInto(r); searchEl?.focus(); }}>{I.arrowRight}</button>
-            <button class="act copy nf" title="Copy here (Shift+D)" disabled={!session.current}
+            <button class="act copy nf" use:tip={"Copy here (Shift+D)"} disabled={!session.current}
               onclick={() => { session.copyInto(r); searchEl?.focus(); }}>{I.copy}</button>
           </div>
         </div>
@@ -176,7 +177,7 @@
               onblur={(e) => { if (session.renamingPath === folder.path) session.commitRename(folder, e.currentTarget.value); }}
             />
           {:else}
-            <button class="drill" title={folder.path}
+            <button class="drill" use:tip={folder.path}
               onclick={() => { session.focusNavigator(); session.navCursor = rowIndex(fi); session.loadFolders(folder.path); }}>
               <span class="nf icon">{I.folder}</span>
               <span class="name">{folder.name}</span>
@@ -184,9 +185,9 @@
               <span class="count">({folder.mediaCount})</span>
             </button>
             <div class="acts">
-              <button class="act move nf" title="Move file here (Enter)" disabled={!session.current}
+              <button class="act move nf" use:tip={"Move file here (Enter)"} disabled={!session.current}
                 onclick={() => session.moveInto(folder)}>{I.arrowRight}</button>
-              <button class="act copy nf" title="Copy file here (Shift+D)" disabled={!session.current}
+              <button class="act copy nf" use:tip={"Copy file here (Shift+D)"} disabled={!session.current}
                 onclick={() => session.copyInto(folder)}>{I.copy}</button>
             </div>
           {/if}
