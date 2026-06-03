@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Action history** — a popup (icon next to the settings cog) lists this session's moves/copies/trashes and can revert any single file individually.
+- **Sort-target editor in Settings** — bind hotkey slots to any folder, including folders outside the destination root; the `=` slot is preset as "Archive".
+- **Navigator right-click menu** — open a folder in Explorer, or rename it in place.
+- **Type-to-search in the Navigator** — just start typing to fuzzy-find folders.
+- **"Check for updates on launch" toggle** in Settings.
+- **Portable build** keeps `config.toml` beside the executable and bundles the WebView2 loader, so the app travels in one folder.
+
+### Changed
+- Undo is now **Ctrl+U**; arrow keys handle all list navigation (the `j`/`k`/`h`/`l` shortcuts and the Navigator's `/` were removed).
+- The preview's media-type icon matches the inbox color (green image / blue video).
+
+### Fixed
+- `Shift+D` now copies into the highlighted Navigator folder from any pane.
+- Folder media counts refresh immediately after a copy while searching.
+- `Tab` during a Navigator search returns focus to the inbox cleanly.
+- After a multi-select move, the cursor lands on the next item (not two down).
+
 ## [0.3.2] — 2026-06-02
 
 ### Added
