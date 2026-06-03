@@ -23,6 +23,10 @@
   <img src="https://img.shields.io/badge/status-active-82d65a?style=flat-square" alt="Status: active">
 </p>
 
+<p>
+  <a href="https://github.com/kpg-anon/comfysort/releases/latest"><img src="https://img.shields.io/badge/⬇%20download-latest%20release-82d65a?style=for-the-badge" alt="Download the latest release"></a>
+</p>
+
 </div>
 
 ---
@@ -35,6 +39,7 @@
 - [The loop](#-the-loop)
 - [Features](#-features)
 - [The interface](#-the-interface)
+- [Download](#-download)
 - [Install & build](#-install--build)
 - [Keyboard](#-keyboard)
 - [Configuration](#-configuration)
@@ -106,6 +111,26 @@ A keyboard-driven, three-column workstation:
   <img src="docs/screenshots/main.png" alt="comfysort main window" width="900">
 </div>
 -->
+
+## ⬇️ Download
+
+**[Download the latest release →](https://github.com/kpg-anon/comfysort/releases/latest)**
+
+Windows (x64):
+
+| File | Notes |
+|:--|:--|
+| `comfysort_<version>_x64-setup.exe` | **Recommended** — NSIS installer |
+| `comfysort_<version>_x64_en-US.msi` | MSI alternative (managed / silent installs) |
+
+1. Grab the `-setup.exe` from the [Releases page](https://github.com/kpg-anon/comfysort/releases/latest).
+2. Run it. comfysort needs the **WebView2** runtime — preinstalled on Windows 11; the installer fetches it automatically if missing.
+3. Launch comfysort from the Start menu.
+
+> [!NOTE]
+> The installers are currently **unsigned**, so Windows SmartScreen may warn on first launch — choose **More info → Run anyway**. Code signing is on the roadmap.
+
+Prefer to build it yourself? See [Install & build](#-install--build).
 
 ## 📦 Install & build
 
