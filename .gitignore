@@ -20,7 +20,9 @@ vite.config.ts.timestamp-*
 # Local-only docs (internal architecture / design / handoff / agent workflow +
 # context for cross-session iteration) and local Claude tooling. Kept out of the
 # public repo; README.md (public) lives at the root.
-/docs/
+# Exception: docs/screenshots/ holds the README hero + screenshots (published).
+/docs/*
+!/docs/screenshots/
 /.claude/
 
 # Agent/contributor entry (local-only; harness-neutral front door)

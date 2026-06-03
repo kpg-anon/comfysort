@@ -9,7 +9,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.3.0-c287ff?style=for-the-badge" alt="Version 0.3.0">
+  <img src="https://img.shields.io/badge/version-0.3.1-c287ff?style=for-the-badge" alt="Version 0.3.1">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-engine-CE412B?style=for-the-badge&logo=rust&logoColor=white" alt="Rust engine">
@@ -21,8 +21,7 @@
   <img src="https://img.shields.io/badge/status-active-82d65a?style=flat-square" alt="Status: active">
 </p>
 
-<!-- Add your own hero shot here. The screenshots dir may not exist yet — create docs/screenshots/ and drop a PNG in. -->
-<img src="docs/screenshots/hero.png" alt="comfysort in action" width="860">
+<img src="docs/screenshots/hero.webp" alt="comfysort" width="860">
 
 <sub><i>Native webview image/video previews, hotkey destinations, and a focusable folder navigator — all from the keyboard.</i></sub>
 
