@@ -72,6 +72,13 @@
         }
         break;
       case "Enter": e.preventDefault(); session.searchMove(); break;
+      case "Tab":
+        // Switch back to the inbox instead of letting the browser tab-focus a
+        // result button (which looked like an erroneous highlight).
+        e.preventDefault();
+        session.exitSearch();
+        session.focusInbox();
+        break;
       case "Escape": e.preventDefault(); session.exitSearch(); break;
     }
   }

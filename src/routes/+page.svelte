@@ -147,6 +147,14 @@
       return;
     }
 
+    // --- Global: Shift+D copies the current target(s) into the highlighted
+    //     Navigator folder, regardless of focus (mirrors a folder's copy button). ---
+    if (e.shiftKey && e.key === "D") {
+      e.preventDefault();
+      session.navCopy();
+      return;
+    }
+
     // --- Pane-routed navigation ---
     if (session.focus === "navigator") navigatorKey(e);
     else inboxKey(e);
@@ -204,10 +212,6 @@
       case "Enter":
         e.preventDefault();
         session.navEnterMove();
-        break;
-      case "D":
-        e.preventDefault();
-        session.navCopy(); // Shift+D copies into the highlighted folder
         break;
       case "d":
         if (e.ctrlKey) {

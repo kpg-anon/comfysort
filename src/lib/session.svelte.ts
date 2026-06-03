@@ -605,6 +605,22 @@ class SessionStore {
       this.setStatus(String(e), "bad");
     }
   }
+  /** Re-run the active search to refresh folder media counts after an op (e.g. a
+   *  copy bumps the destination's count), preserving the highlighted row. */
+  private async refreshSearchCounts() {
+    if (!this.searching || !this.searchQuery.trim()) return;
+    const cur = this.searchCursor;
+    const seq = ++this.#searchSeq;
+    try {
+      const results = await api.searchFolders(this.searchQuery);
+      if (seq === this.#searchSeq) {
+        this.searchResults = results;
+        this.searchCursor = Math.min(cur, Math.max(0, results.length - 1));
+      }
+    } catch {
+      /* leave stale counts rather than surfacing a transient search error */
+    }
+  }
   searchDown() {
     if (this.searchCursor < this.searchResults.length - 1) this.searchCursor++;
   }
@@ -655,6 +671,7 @@ class SessionStore {
       this.applyOutcome(out);
       this.setStatus(out.message, kindToStatus(out.kind));
       this.scheduleNavRefresh();
+      if (this.searching) this.refreshSearchCounts();
       this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
@@ -688,8 +705,13 @@ class SessionStore {
       // Single removal pass + one view re-derivation, instead of rebuilding the
       // (potentially 25k-item) array once per moved file.
       if (removed.size) {
+        // Land the cursor on the first row *after* the removed block: the item
+        // that shifts up into the block's start index. (Keeping the old cursor
+        // index would skip past it by the size of the selection.)
+        const firstIdx = this.view.findIndex((i) => removed.has(i.path));
         this.allItems = this.allItems.filter((i) => !removed.has(i.path));
-        this.clampCursor();
+        if (firstIdx >= 0) this.cursor = Math.min(firstIdx, Math.max(0, this.view.length - 1));
+        else this.clampCursor();
       }
       if (last) {
         this.destinations = last.destinations;
@@ -699,6 +721,7 @@ class SessionStore {
       }
       if (clearSel) this.clearSelection();
       this.scheduleNavRefresh();
+      if (this.searching) this.refreshSearchCounts();
       this.fetchDisk();
     } catch (e) {
       this.setStatus(String(e), "bad");
