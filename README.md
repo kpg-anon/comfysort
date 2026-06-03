@@ -82,26 +82,22 @@ flowchart LR
 
 ## 🎛️ Features
 
-- [x] **Native webview previews** — images and videos render directly in the webview at full quality (via the Tauri asset protocol); dimensions and duration read straight from the media element.
-- [x] **Keyboard-first three-pane workstation** — **Inbox** (left), **Preview** (center, the hero), and a right column of **File Info**, **Sort Targets**, and **Navigator**.
-- [x] **Focus model** — <kbd>Tab</kbd> toggles keyboard focus between Inbox and Navigator; the focused pane gets a purple border and `*` marker. Hotkeys and undo stay global; navigation routes by focus.
-- [x] **Journaled move / copy / trash** — every mutation is appended to `<output>/.comfysort/journal.jsonl` (intent before, result after).
-- [x] **Multi-step session undo** — <kbd>Ctrl</kbd>+<kbd>U</kbd> walks the whole session back: moves restore the file *and* re-insert the inbox row, copies unlink the duplicate, trashes restore from `.trash`.
-- [x] **Action history** — a popup (icon next to the settings cog) lists this session's moves, copies, and trashes, and can revert any single file individually — independent of the undo stack.
-- [x] **Collision-safe rename** — name conflicts get Windows-Explorer-style `name (2).ext` suffixes; the default policy never overwrites.
-- [x] **Cross-volume safe moves** — `rename` first; across a drive/share boundary it falls back to copy → verify size → delete source, with a confirm modal (<kbd>y</kbd> once / <kbd>a</kbd> always this session / <kbd>n</kbd> cancel) before any bytes move.
-- [x] **Folder Navigator** — drill in/out of the destination tree, **type-to-search** to fuzzy-find folders anywhere under the root (just start typing), create, rename, and delete folders, with **recursive media counts** (a folder of subfolders still reflects its descendants). Right-click a folder to **open it in Explorer** or **rename it in place**.
-- [x] **Sort-target editor** — a dedicated panel (opened from Settings) binds hotkey slots to *any* folder, including folders outside the destination root. A `=` slot defaults to a managed archive folder, and an optional `−` slot takes a second custom destination.
-- [x] **Persistent hotkey binding** — bind any folder under the output root to a slot (<kbd>Shift</kbd>+digit on a highlighted Navigator folder); binds survive restart via `<output>/.comfysort/bindings.json`. Only trash auto-binds, to <kbd>0</kbd>.
-- [x] **Inbox sort / filter + multiselect** — cycle sort field (name/size/modified) and filter (all/images/videos); <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> extends a contiguous selection that move/copy then act on in a batch (each op journaled individually).
-- [x] **Multiple inbox folders** — add more source folders to an open session (the ＋ button beside the inbox folder); their media merges into one inbox.
-- [x] **Virtualized inbox** — only visible rows render, so an inbox of **25k+ files** stays smooth; mutating commands return tiny deltas instead of re-sending the list.
-- [x] **Right-click context menu** — open in the default viewer, reveal in the file explorer, move to trash, or refresh the inbox.
-- [x] **Native settings overlay** — a cog opens an in-app overlay that reads and writes `config.toml`.
-- [x] **4 theme presets** — Comfy Dark, Nord, Gruvbox, Catppuccin.
-- [x] **Disk-space readout** — free / total space for the destination drive.
-- [x] **In-app updater** — with "check for updates on launch" enabled, comfysort notices a new release and offers one-click **Update now** (downloads, installs, and relaunches).
-- [x] **Portable build** — a no-install zip that keeps its `config.toml` beside the executable, so settings travel with the app.
+**Triage fast**
+- Native, full-quality image & video previews rendered right in the webview.
+- Hotkeys move (<kbd>1</kbd>–<kbd>9</kbd>), trash (<kbd>0</kbd>), or copy (<kbd>⇧</kbd>+digit); <kbd>Shift</kbd>+<kbd>↑↓</kbd> multiselects for batch ops.
+- Merge **multiple inbox folders** into one queue; sort/filter; virtualized for **25k+ files**.
+
+**Organize**
+- Folder **Navigator** — type-to-search, recursive media counts, create / rename / delete, right-click to open in Explorer or rename.
+- **Sort-target editor** — bind hotkey slots to any folder (even outside the root), with a `=` archive slot and an optional `−` slot.
+
+**Safe & reversible**
+- Journaled move / copy / trash with multi-step <kbd>Ctrl</kbd>+<kbd>U</kbd> undo, plus **per-file revert** from the action history.
+- Soft-delete trash, collision-safe renames, and verified cross-volume moves — nothing is silently clobbered or lost.
+
+**Comfort & upkeep**
+- Calm dark UI, 4 theme presets, settings saved to `config.toml`.
+- One-click **in-app updater** and a **portable** no-install build.
 
 ## 🖥️ The interface
 
