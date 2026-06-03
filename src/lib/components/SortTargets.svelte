@@ -11,7 +11,8 @@
 <section class="pane">
   <div class="title">「 Sort Targets 」</div>
   <div class="list">
-    {#each targets as dest (dest.path)}
+    {#each targets as dest, i (dest.path)}
+      {#if dest.isTrash && i > 0}<div class="sep" aria-hidden="true"></div>{/if}
       <div class="slot" class:trash={dest.isTrash}>
         <span class="key" class:trashkey={dest.isTrash}>{dest.hotkey}</span>
         <span class="nf icon">{dest.isTrash ? I.trash : I.folder}</span>
@@ -52,6 +53,7 @@
     font-size: 12.5px;
   }
   .slot:hover { background: var(--bg-panel-alt); }
+  .sep { border-top: 1px dashed var(--border); margin: 3px 8px; }
   .key {
     display: inline-grid; place-items: center;
     width: 20px; height: 20px; border-radius: var(--radius-sm);

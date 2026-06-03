@@ -14,7 +14,7 @@
 <section class="pane">
   <div class="bar">
     <span class="name" title={item?.fileName ?? ""}>
-      {#if item}<span class="nf kind">{kindIcon(item.kind)}</span>{/if}{item?.fileName ?? "—"}
+      {#if item}<span class="nf kind kind-{item.kind}">{kindIcon(item.kind)}</span>{/if}{item?.fileName ?? "—"}
     </span>
     {#if item}
       <span class="meta">
@@ -68,7 +68,10 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .name .kind { margin-right: 7px; font-size: 12px; opacity: 0.8; color: var(--purple); }
+  .name .kind { margin-right: 7px; font-size: 12px; opacity: 0.85; }
+  .name .kind-image { color: var(--green); }
+  .name .kind-video { color: var(--blue); }
+  .name .kind-other { color: var(--text-muted); }
   .meta {
     display: inline-flex;
     align-items: center;

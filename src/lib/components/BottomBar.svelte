@@ -18,7 +18,7 @@
     ["s", "sort", "yellow"],
     ["f", "filter", "yellow"],
     ["/", "search", "purple"],
-    ["u", "undo", "orange"],
+    ["^u", "undo", "orange"],
   ];
   const navChips: Chip[] = [
     ["tab", "inbox", "cyan"],
@@ -30,7 +30,7 @@
     ["/", "search", "purple"],
     ["^d", "delete", "red"],
     ["^n", "new", "green"],
-    ["u", "undo", "orange"],
+    ["^u", "undo", "orange"],
   ];
   const chips = $derived(session.focus === "navigator" ? navChips : inboxChips);
 

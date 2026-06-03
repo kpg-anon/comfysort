@@ -126,8 +126,8 @@
       return;
     }
 
-    // --- Global: undo ---
-    if (e.key === "u" || e.key === "U") {
+    // --- Global: undo (Ctrl+U) ---
+    if (e.ctrlKey && (e.key === "u" || e.key === "U")) {
       e.preventDefault();
       session.undo();
       return;
@@ -161,13 +161,11 @@
     }
     switch (e.key) {
       case "ArrowDown":
-      case "j":
         e.preventDefault();
         if (e.altKey) session.bottom();
         else session.next();
         break;
       case "ArrowUp":
-      case "k":
         e.preventDefault();
         if (e.altKey) session.top();
         else session.prev();
@@ -186,12 +184,10 @@
   function navigatorKey(e: KeyboardEvent) {
     switch (e.key) {
       case "ArrowDown":
-      case "j":
         e.preventDefault();
         session.navDown();
         break;
       case "ArrowUp":
-      case "k":
         e.preventDefault();
         session.navUp();
         break;
