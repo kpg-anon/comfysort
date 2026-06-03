@@ -455,6 +455,10 @@ class SessionStore {
   openNavContext(e: MouseEvent, folder: FolderEntry) {
     e.preventDefault();
     this.focusNavigator();
+    // Make the right-clicked folder the active selection (mirrors the inbox).
+    const folders = this.nav?.folders ?? [];
+    const idx = folders.findIndex((f) => f.path === folder.path);
+    if (idx >= 0) this.navCursor = (this.navHasParent ? 1 : 0) + idx;
     this.navCtx = { x: e.clientX, y: e.clientY, folder };
   }
   closeNavContext() {

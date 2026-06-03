@@ -257,7 +257,7 @@
   }
   .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 6px; }
   .row { display: flex; align-items: center; border-radius: var(--radius-sm); }
-  .row:hover { background: var(--bg-panel-alt); }
+  .row:hover { background: color-mix(in srgb, var(--bg-panel-alt), white 9%); }
   .row.cursor { background: var(--bg-selected-active); }
   .row.cursor .name { color: var(--text-primary); }
   .drill {

@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-03
+
 ### Added
 - **Action history** — a popup (icon next to the settings cog) lists this session's moves/copies/trashes and can revert any single file individually.
-- **Sort-target editor in Settings** — bind hotkey slots to any folder, including folders outside the destination root; the `=` slot is preset as "Archive".
+- **Sort-target editor** — a dedicated panel (opened from Settings) to bind hotkey slots to any folder, including folders outside the destination root.
+- **`=` archive slot** — defaults to a managed `.comfysort/archive` folder; the `−` slot is available for a second custom destination.
 - **Navigator right-click menu** — open a folder in Explorer, or rename it in place.
 - **Type-to-search in the Navigator** — just start typing to fuzzy-find folders.
 - **"Check for updates on launch" toggle** in Settings.
@@ -18,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Undo is now **Ctrl+U**; arrow keys handle all list navigation (the `j`/`k`/`h`/`l` shortcuts and the Navigator's `/` were removed).
 - The preview's media-type icon matches the inbox color (green image / blue video).
+- Brighter row hover in the inbox and Navigator; right-clicking a Navigator folder now selects it.
 
 ### Fixed
 - `Shift+D` now copies into the highlighted Navigator folder from any pane.
@@ -67,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.0
 [0.3.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.2
 [0.3.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.3.1

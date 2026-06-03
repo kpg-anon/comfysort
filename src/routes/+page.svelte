@@ -13,6 +13,7 @@
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import UpdateNotice from "$lib/components/UpdateNotice.svelte";
   import HistoryPanel from "$lib/components/HistoryPanel.svelte";
+  import SortTargetsEditor from "$lib/components/SortTargetsEditor.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -73,6 +74,12 @@
     if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
       e.preventDefault();
       if (session.focus === "inbox") session.toggleSortOrder();
+      return;
+    }
+
+    // --- Modal: sort-target editor (opens over Settings) — Escape closes it ---
+    if (settings.targetsOpen) {
+      if (e.key === "Escape") { e.preventDefault(); settings.closeTargets(); }
       return;
     }
 
@@ -294,6 +301,7 @@
 
 <UpdateNotice />
 <HistoryPanel />
+<SortTargetsEditor />
 
 <style>
   .app {

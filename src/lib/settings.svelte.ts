@@ -21,6 +21,8 @@ class SettingsStore {
 
   /** Overlay visibility. */
   open = $state(false);
+  /** Sort-target editor popup visibility (opened from the Settings panel). */
+  targetsOpen = $state(false);
   loaded = $state(false);
 
   private snapshot(): Settings {
@@ -104,6 +106,12 @@ class SettingsStore {
   }
   close() {
     this.open = false;
+  }
+  openTargets() {
+    this.targetsOpen = true;
+  }
+  closeTargets() {
+    this.targetsOpen = false;
   }
 }
 

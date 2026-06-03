@@ -80,6 +80,21 @@ impl Session {
             );
         }
 
+        // Default the "=" slot to a managed archive folder under the state dir,
+        // unless the user has already bound "=" to something else. It lives in
+        // `.comfysort/archive` so it never shows up as a scanned destination.
+        if !destinations.iter().any(|d| d.hotkey.as_deref() == Some("=")) {
+            let archive = output.join(STATE_DIR).join("archive");
+            let _ = std::fs::create_dir_all(&archive);
+            destinations.push(DestinationDto {
+                media_count: count_media(&archive),
+                label: "archive".to_owned(),
+                path: archive.to_string_lossy().into_owned(),
+                hotkey: Some("=".to_owned()),
+                is_trash: false,
+            });
+        }
+
         // Session-open diagnostic banner: exactly what the scanner found this
         // launch, so a reported file-disappearance can be traced to the scan.
         log(

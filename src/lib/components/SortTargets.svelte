@@ -30,10 +30,10 @@
   {#if dest}
     {@render boundSlot(dest)}
   {:else}
-    <button class="slot placeholder" title="Set in Settings → Sort targets" onclick={() => settings.toggleOpen()}>
-      <span class="key dim">{key}</span>
-      <span class="nf icon dim">{I.folder}</span>
-      <span class="label dim">{fallback}</span>
+    <button class="slot placeholder" title="Set in the sort-target editor" onclick={() => settings.openTargets()}>
+      <span class="key">{key}</span>
+      <span class="nf icon">{I.folder}</span>
+      <span class="label muted">{fallback}</span>
       <span class="count"></span>
       <span class="spacer"></span>
     </button>
@@ -49,9 +49,6 @@
 
     <div class="sep" aria-hidden="true"></div>
 
-    {@render specialSlot("=", eqDest, "Archive")}
-    {@render specialSlot("-", dashDest, "(unused)")}
-
     {#if trash}
       <div class="slot trash">
         <span class="key trashkey">{trash.hotkey}</span>
@@ -62,6 +59,9 @@
         <span class="spacer"></span>
       </div>
     {/if}
+    <!-- − only appears once the user binds it (in the sort-target editor). -->
+    {#if dashDest}{@render boundSlot(dashDest)}{/if}
+    {@render specialSlot("=", eqDest, "Archive")}
   </div>
   {#if !hasUserBinds}
     <div class="hint">
@@ -89,10 +89,9 @@
     font-size: 12.5px;
   }
   .slot:hover { background: var(--bg-panel-alt); }
-  .sep { border-top: 1px dashed var(--border); margin: 3px 8px; }
+  .sep { border-top: 1px dashed var(--text-muted); margin: 6px 10px; }
   .placeholder { font: inherit; text-align: left; width: 100%; cursor: pointer; }
-  .placeholder .key.dim, .placeholder .icon.dim, .placeholder .label.dim { opacity: 0.5; }
-  .placeholder .label.dim { color: var(--text-muted); }
+  .placeholder .label.muted { color: var(--text-muted); }
   .key {
     display: inline-grid; place-items: center;
     width: 20px; height: 20px; border-radius: var(--radius-sm);

@@ -121,7 +121,7 @@
   .row .c { display: flex; align-items: center; justify-content: center; }
   /* Uniform-width extension chips so WEBM/WEBP don't read larger than JPG/MP4. */
   .ext-chip { min-width: 40px; justify-content: center; }
-  .row:hover { background: var(--bg-panel-alt); }
+  .row:hover { background: color-mix(in srgb, var(--bg-panel-alt), white 9%); }
   /* Selection state is shown with a left accent bar + tinted bg (no glyph
      column), reclaiming the full row width for the filename. */
   .row.selected { background: var(--bg-selected-active); color: var(--text-primary); box-shadow: inset 3px 0 0 var(--purple); }
