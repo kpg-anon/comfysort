@@ -1,6 +1,8 @@
 <!-- ───────────────────────────── HERO ───────────────────────────── -->
 <div align="center">
 
+<img src="docs/screenshots/hero.webp" alt="comfysort mascot" width="200">
+
 <h1><samp>comfysort</samp></h1>
 
 <p>
@@ -21,16 +23,9 @@
   <img src="https://img.shields.io/badge/status-active-82d65a?style=flat-square" alt="Status: active">
 </p>
 
-<img src="docs/screenshots/hero.webp" alt="comfysort" width="860">
-
-<sub><i>Native webview image/video previews, hotkey destinations, and a focusable folder navigator — all from the keyboard.</i></sub>
-
 </div>
 
 ---
-
-> [!NOTE]
-> **comfysort** is the desktop-GUI sibling of the [`comfysort` terminal app](https://github.com/kpg-anon/comfysort). It is a ground-up reimplementation built on a real webview — so previews render at full quality and the layout is fluid — while keeping the TUI's hard-won safety guarantees. The two share principles, not code.
 
 <!-- ───────────────────────────── TOC ───────────────────────────── -->
 <details>
@@ -67,13 +62,17 @@ It is **not** a general file manager and **not** an auto-sorter. Nothing on disk
 
 Pick an **inbox** and a **destination root** → preview the current file → press a hotkey (or click a target) → it **moves**, **copies**, or goes to **trash** → every mutation is journaled → press <kbd>u</kbd> to walk it back.
 
-```
-   ┌──────────┐    ┌──────────┐    ┌──────────────┐    ┌──────────┐
-   │  Scan    │ ─> │ Preview  │ ─> │ 1–9 move     │ ─> │ Journal  │
-   │  inbox   │    │  file    │    │ 0   trash    │    │ + counts │
-   └──────────┘    └────▲─────┘    │ ⇧+digit copy │    └────┬─────┘
-                        │          └──────────────┘         │
-                        └────────────── u (undo) ───────────┘
+```mermaid
+flowchart LR
+    A["📂 Scan inbox"] --> B["🖼️ Preview file"]
+    B --> C{"Press a key"}
+    C -->|"1–9"| D["Move"]
+    C -->|"0"| E["Trash"]
+    C -->|"⇧ + digit"| F["Copy"]
+    D --> G["📓 Journal + counts"]
+    E --> G
+    F --> G
+    G -.->|"u · undo"| B
 ```
 
 ## 🎛️ Features
@@ -96,26 +95,17 @@ Pick an **inbox** and a **destination root** → preview the current file → pr
 
 ## 🖥️ The interface
 
-A header with input/output chips, a wide preview, and a right column of context panes — driven entirely from the keyboard.
+A keyboard-driven, three-column workstation:
 
-```
-┌─ ~/media/inbox ▾ ───────── ▸ Moved to keep ───────── comfysort v0.3.0 ⚙ ┐
-├──────────────┬─────────────────────────────────────────┬───────────────────┤
-│ 「 Inbox * 」 │             「 Preview 」                 │  「 File Info 」   │
-│              │                                          │  Path · Size      │
-│  Name  Size  │              ███████████████             │  Dimensions       │
-│  ▸ clip.webm │              ███ native ████             │  Duration · Type  │
-│    pic.jpg   │              ███ preview ███             ├───────────────────┤
-│    meme.png  │              ███████████████             │ 「 Sort Targets 」 │
-│              │                                          │  [1] keep   (463) │
-│              │                                          │  [2] group  (128) │
-│              │                                          │  [0] trash    (4) │
-│ 2 selected   │                                          ├───────────────────┤
-│ 29 items 77M │                                          │ 「 Navigator 」    │
-├──────────────┴─────────────────────────────────────────┴───────────────────┤
-│ tab focus · ↑↓ select · 1-9 move · 0 trash · ⇧+digit copy · u undo · / find │
-└────────────────────────────────────────────────────────────────────────────┘
-```
+- **Inbox** *(left)* — the queue of files to triage, virtualized so even 25k-file folders stay smooth.
+- **Preview** *(center)* — the hero pane; images and video render natively at full quality.
+- **Context column** *(right)* — File Info, hotkey-bound Sort Targets, and the folder Navigator.
+
+<!-- Screenshots go here. Add images to docs/screenshots/ and embed them, e.g.:
+<div align="center">
+  <img src="docs/screenshots/main.png" alt="comfysort main window" width="900">
+</div>
+-->
 
 ## 📦 Install & build
 
@@ -263,10 +253,7 @@ The frontend mirrors the engine DTOs in a single typed IPC wrapper (`src/lib/api
 
 ## 📜 License
 
-**MIT.**
-
-> [!NOTE]
-> `package.json` and the manifest declare MIT, but a `LICENSE` file may still need to be added to the repo root.
+Released under the **[MIT License](LICENSE)** — © 2026 kpg-anon.
 
 ---
 
