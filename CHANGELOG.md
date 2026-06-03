@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Header tooltips are now themed in-app popovers instead of the OS tooltip box; a multi-folder inbox lists its folders there.
+- The refresh and add-folder buttons are rounded squares, matching the history/settings buttons.
+
+### Fixed
+- The "add inbox folder" button now renders its icon (was a missing glyph codepoint).
+- Long inbox paths are truncated to the folder name (full paths in the tooltip), so the header buttons are no longer pushed off-screen.
+- The folder picker is parented to the main window so it reliably opens in front.
+
 ## [0.4.2] — 2026-06-03
 
 ### Added

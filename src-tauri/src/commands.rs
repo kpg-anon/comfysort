@@ -86,6 +86,11 @@ pub async fn pick_directory(app: tauri::AppHandle, title: Option<String>) -> Opt
     if let Some(title) = title {
         builder = builder.set_title(title);
     }
+    // Parent the dialog to the main window so it opens in front and modal — an
+    // unparented native folder picker can open behind the window or lose focus.
+    if let Some(win) = app.get_webview_window("main") {
+        builder = builder.set_parent(&win);
+    }
     builder.pick_folder(move |path| {
         let _ = tx.blocking_send(path);
     });

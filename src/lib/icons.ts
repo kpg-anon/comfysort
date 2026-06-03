@@ -27,7 +27,7 @@ export const I = {
   history: "", // nf-fa-history
   edit: "", // nf-fa-pencil_square_o (rename)
   keyboard: "", // nf-fa-keyboard
-  folderPlus: "", // nf-fa-folder_plus (add another input)
+  folderPlus: "", // nf-fa-folder_plus (add another input)
 } as const;
 
 export function kindIcon(kind: MediaKind): string {

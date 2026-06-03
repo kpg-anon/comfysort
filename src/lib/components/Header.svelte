@@ -30,31 +30,33 @@
     (session.input ?? "").split(";").map((s) => s.trim()).filter(Boolean),
   );
   const inputLabel = $derived(
-    inputParts.length > 1 ? `${inputParts.length} folders` : inputParts[0] ? norm(inputParts[0]) : "",
+    inputParts.length > 1 ? `${inputParts.length} folders` : inputParts[0] ? leaf(inputParts[0]) : "",
   );
-  const inputTitle = $derived(
-    inputParts.length
-      ? "Inbox:\n" + inputParts.map(norm).join("\n") + "\n\nClick to choose a different folder"
-      : "Choose an inbox folder",
+  const folderTip = $derived(
+    inputParts.length > 1
+      ? "Inbox folders:\n" + inputParts.map(norm).join("\n")
+      : inputParts[0] ? norm(inputParts[0]) : "No inbox folder selected",
   );
 </script>
 
 <header>
   <div class="left">
-    <button class="chip input" title={inputTitle} onclick={() => session.changeInput()}>
-      <span class="nf gi">{I.inbox}</span>
-      <span class="txt">{inputLabel}</span>
-    </button>
+    <span class="tip chipwrap" data-tip={folderTip}>
+      <button class="chip input" onclick={() => session.changeInput()}>
+        <span class="nf gi">{I.inbox}</span>
+        <span class="txt">{inputLabel}</span>
+      </button>
+    </span>
     <button
-      class="iconbtn"
+      class="iconbtn tip"
       class:spinning={refreshing}
-      title="Rescan the inbox for new files (F5)"
+      data-tip="Rescan the inbox (F5)"
       onclick={doRefresh}
       onanimationend={() => (refreshing = false)}
     >
       <span class="nf">{I.refresh}</span>
     </button>
-    <button class="iconbtn" title="Add another inbox folder" onclick={() => session.addInputFolder()}>
+    <button class="iconbtn tip" data-tip="Add another inbox folder" onclick={() => session.addInputFolder()}>
       <span class="nf">{I.folderPlus}</span>
     </button>
   </div>
@@ -110,19 +112,32 @@
   }
   .chip .txt { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .left { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-  .input { min-width: 0; color: var(--purple); }
+  .chipwrap { display: inline-flex; min-width: 0; }
+  .input { max-width: 260px; min-width: 0; color: var(--purple); }
   .input:hover { border-color: var(--purple); }
+  /* Rounded-square icon buttons, matching the history/settings buttons on the right. */
   .iconbtn {
     display: grid; place-items: center; flex: none;
-    width: 28px; height: 28px; padding: 0;
-    border: 1px solid transparent; background: var(--bg-chip); color: var(--text-muted);
-    border-radius: 20px; cursor: pointer; font-size: 12px;
+    width: 26px; height: 26px; padding: 0;
+    border: 1px solid var(--border); background: var(--bg-chip); color: var(--text-muted);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
   }
   .iconbtn:hover { color: var(--purple); border-color: var(--purple); }
   .iconbtn:active { transform: scale(0.9); }
   .iconbtn .nf { display: inline-block; line-height: 1; }
   .iconbtn.spinning .nf { animation: cs-spin 0.6s ease; }
   @keyframes cs-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  /* Themed in-app tooltip (replaces the OS title box). */
+  .tip { position: relative; }
+  .tip:hover::after {
+    content: attr(data-tip);
+    position: absolute; top: calc(100% + 7px); left: 0;
+    z-index: 80; width: max-content; max-width: 460px;
+    background: var(--bg-panel); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 7px 10px; font-size: 11px; line-height: 1.55; white-space: pre-line;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5); pointer-events: none;
+  }
   .gi { font-size: 12px; flex: none; opacity: 0.9; }
   .status {
     justify-self: center;
