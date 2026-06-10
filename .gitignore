@@ -35,3 +35,7 @@ vite.config.ts.timestamp-*
 
 # Private build/release toolchain (not for public consumption)
 /scripts/
+
+# Remotion marketing-video project (local-only tooling; the published demo GIF
+# and screenshots it renders live in docs/screenshots/)
+/marketing/

@@ -1,13 +1,12 @@
-<!-- ───────────────────────────── HERO ───────────────────────────── -->
 <div align="center">
 
-<img src="docs/screenshots/hero.webp" alt="comfysort mascot" width="200">
+<img src="docs/screenshots/hero.webp" alt="comfysort mascot" width="170">
 
 <h1><samp>comfysort</samp></h1>
 
 <p>
   <b>A calm, preview-first desktop workstation for sorting large piles of media — fast.</b><br>
-  <i>Preview the file. Press a key. It moves. Press <kbd>Ctrl</kbd>+<kbd>U</kbd> to undo. That's the whole loop.</i>
+  <i>Preview the file. Press a key. It moves. <kbd>Ctrl</kbd>+<kbd>U</kbd> walks it back. That's the whole loop.</i>
 </p>
 
 <p>
@@ -19,272 +18,105 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Windows-supported-1F2937?style=flat-square&logo=windows&logoColor=white" alt="Windows">
-  <img src="https://img.shields.io/badge/status-active-82d65a?style=flat-square" alt="Status: active">
-</p>
-
-<p>
   <a href="https://github.com/kpg-anon/comfysort/releases/latest"><img src="https://img.shields.io/badge/⬇%20download-latest%20release-82d65a?style=for-the-badge" alt="Download the latest release"></a>
 </p>
 
 </div>
 
+https://github.com/user-attachments/assets/edd501ad-748d-4aa1-8101-778ac1b5e1d1
+
 ---
 
-<!-- ───────────────────────────── TOC ───────────────────────────── -->
-<details>
-<summary><b>Table of contents</b></summary>
+## ✨ Why
 
-- [Why comfysort](#-why-comfysort)
-- [The loop](#-the-loop)
-- [Features](#-features)
-- [The interface](#-the-interface)
-- [Download](#-download)
-- [Install & build](#-install--build)
-- [Keyboard](#-keyboard)
-- [Configuration](#-configuration)
-- [How it stays safe](#-how-it-stays-safe)
-- [Tech stack & architecture](#-tech-stack--architecture)
-- [Roadmap](#-roadmap)
-- [License](#-license)
+If you triage thousands of images and videos at a time — photo dumps, screenshot graveyards, render output — file managers slow you down because they want you to *navigate*. **comfysort wants you to decide.** The preview is the hero, every destination is a single keystroke, and every action is journaled and reversible.
 
-</details>
-
-## ✨ Why comfysort
-
-If you triage thousands of images and videos at a time — photo dumps, screenshot graveyards, downloaded archives, render output — most file managers slow you down. They want you to *navigate*. **comfysort wants you to decide.**
-
-| | Principle | What it means |
-|:--:|:--|:--|
-| 🖼️ | **Preview-first** | The image or video is the hero — rendered natively in the webview, full quality, front and center. |
-| ⌨️ | **Keyboard-first** | Destinations bind to <kbd>1</kbd>–<kbd>9</kbd>, trash to <kbd>0</kbd>. A focus model routes navigation; hotkeys are global. |
-| 🌙 | **Calm** | Dark theme, restrained palette, no decorative chrome. Built for long sessions. |
-| ↩️ | **Explicit & reversible** | Nothing moves without an action. Every mutation is journaled. <kbd>Ctrl</kbd>+<kbd>U</kbd> walks it all back. |
-
-It is **not** a general file manager and **not** an auto-sorter. Nothing on disk changes without an explicit user action.
-
-## 🔁 The loop
-
-Pick an **inbox** and a **destination root** → preview the current file → press a hotkey (or click a target) → it **moves**, **copies**, or goes to **trash** → every mutation is journaled → press <kbd>Ctrl</kbd>+<kbd>U</kbd> to walk it back.
-
-```mermaid
-flowchart LR
-    A["📂 Scan inbox"] --> B["🖼️ Preview file"]
-    B --> C{"Press a key"}
-    C -->|"1–9"| D["Move"]
-    C -->|"0"| E["Trash"]
-    C -->|"⇧ + digit"| F["Copy"]
-    D --> G["📓 Journal + counts"]
-    E --> G
-    F --> G
-    G -.->|"Ctrl+U · undo"| B
-```
+Pick an **inbox** and a **destination root**, preview the current file, press <kbd>1</kbd>–<kbd>9</kbd> to move it (<kbd>0</kbd> trashes, <kbd>⇧</kbd>+digit copies), and it's gone — next file. It is **not** an auto-sorter: nothing on disk changes without an explicit action.
 
 ## 🎛️ Features
 
-**Triage fast**
-- Native, full-quality image & video previews rendered right in the webview.
-- Hotkeys move (<kbd>1</kbd>–<kbd>9</kbd>), trash (<kbd>0</kbd>), or copy (<kbd>⇧</kbd>+digit); <kbd>Shift</kbd>+<kbd>↑↓</kbd> multiselects for batch ops.
-- Merge **multiple inbox folders** into one queue; sort/filter; virtualized for **25k+ files**.
+- **Triage fast** — native full-quality image & video previews; hotkey move/copy/trash; multiselect for batch ops; merge multiple inbox folders into one queue; virtualized for 25k+ files.
+- **Organize** — folder **Navigator** with type-to-fuzzy-search, recursive media counts, and create/rename/delete; a **sort-target editor** that binds any folder (even outside the root) to any key.
+- **Safe & reversible** — journaled operations, multi-step <kbd>Ctrl</kbd>+<kbd>U</kbd> undo, per-file revert from the **action history**, soft-delete trash, collision-safe renames, verified cross-drive moves.
+- **Comfortable** — calm dark UI with 4 theme presets, settings persisted to `config.toml`, one-click in-app updater, portable no-install build.
 
-**Organize**
-- Folder **Navigator** — type-to-search, recursive media counts, create / rename / delete, right-click to open in Explorer or rename.
-- **Sort-target editor** — bind hotkey slots to any folder (even outside the root), with a `=` archive slot and an optional `−` slot.
+## 🖥️ Screenshots
 
-**Safe & reversible**
-- Journaled move / copy / trash with multi-step <kbd>Ctrl</kbd>+<kbd>U</kbd> undo, plus **per-file revert** from the action history.
-- Soft-delete trash, collision-safe renames, and verified cross-volume moves — nothing is silently clobbered or lost.
-
-**Comfort & upkeep**
-- Calm dark UI, 4 theme presets, settings saved to `config.toml`.
-- One-click **in-app updater** and a **portable** no-install build.
-
-## 🖥️ The interface
-
-A keyboard-driven, three-column workstation:
-
-- **Inbox** *(left)* — the queue of files to triage, virtualized so even 25k-file folders stay smooth.
-- **Preview** *(center)* — the hero pane; images and video render natively at full quality.
-- **Context column** *(right)* — File Info, hotkey-bound Sort Targets, and the folder Navigator.
-
-<!-- Screenshots go here. Add images to docs/screenshots/ and embed them, e.g.:
 <div align="center">
-  <img src="docs/screenshots/main.png" alt="comfysort main window" width="900">
+  <img src="docs/screenshots/main.png" alt="The three-column workstation: inbox queue, native preview, file info / sort targets / navigator" width="860">
+  <br><sub>The three-column workstation — inbox queue · native preview · file info, hotkey sort targets & navigator</sub>
 </div>
--->
+
+| | |
+|:--:|:--:|
+| <img src="docs/screenshots/navigator.png" alt="Navigator fuzzy search"> | <img src="docs/screenshots/history.png" alt="Action history with per-file revert"> |
+| <sub>Navigator — type to fuzzy-find any folder, <kbd>Enter</kbd> moves into it</sub> | <sub>Action history — every operation journaled, revert any single file</sub> |
+| <img src="docs/screenshots/settings.png" alt="Settings with theme presets"> | <img src="docs/screenshots/editor.png" alt="Sort-target editor"> |
+| <sub>Settings — themes, collision policy, confirms, defaults (config.toml)</sub> | <sub>Sort-target editor — bind any folder to keys <kbd>1</kbd>–<kbd>9</kbd>, <kbd>=</kbd>, <kbd>−</kbd></sub> |
 
 ## ⬇️ Download
 
-**[Download the latest release →](https://github.com/kpg-anon/comfysort/releases/latest)**
-
-Windows (x64):
+**[Latest release →](https://github.com/kpg-anon/comfysort/releases/latest)** (Windows x64)
 
 | File | Notes |
 |:--|:--|
-| `comfysort_<version>_x64-portable.zip` | **Portable (recommended)** — no install; unzip and run `comfysort.exe` |
+| `comfysort_<version>_x64-portable.zip` | **Recommended** — unzip and run `comfysort.exe`, nothing to install |
 | `comfysort_<version>_x64-setup.exe` | NSIS installer — Start-menu entry + uninstaller |
 | `comfysort_<version>_x64_en-US.msi` | MSI — managed / silent installs |
 
-- **Portable:** download the `-portable.zip`, unzip anywhere, run `comfysort.exe`. Nothing to install.
-- **Installer:** run the `-setup.exe` and launch comfysort from the Start menu.
+Needs the **WebView2** runtime (preinstalled on Windows 10/11; the installer fetches it if missing). Builds are currently unsigned, so SmartScreen may warn on first launch — **More info → Run anyway**. Release notes mirror the [changelog](CHANGELOG.md).
 
-comfysort needs the **WebView2** runtime — preinstalled on Windows 10/11. The installer fetches it automatically if missing; for the portable build, grab [Evergreen WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) if your system doesn't already have it.
+## 🛠️ Build from source
 
-> [!NOTE]
-> Builds are currently **unsigned**, so Windows SmartScreen may warn on first launch — choose **More info → Run anyway**. Code signing is on the roadmap.
-
-Release notes mirror the **[changelog](CHANGELOG.md)**. Prefer to build it yourself? See [Install & build](#-install--build).
-
-## 📦 Install & build
-
-> [!IMPORTANT]
-> Building from source is the path today. You need the **Tauri v2 prerequisites** for your OS, plus a Rust toolchain and Node.
-
-**Prerequisites**
-
-- **Rust** (stable) and Cargo
-- **Node.js** + npm
-- **Tauri v2 system prerequisites** — see the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/) (on Windows: the Microsoft C++ Build Tools and a WebView2 runtime)
-
-**Run with hot reload**
+Prereqs: Rust (stable), Node.js + npm, and the [Tauri v2 system prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 npm install
-npm run tauri dev
+npm run tauri dev     # hot reload
+npm run tauri build   # → target/release/comfysort.exe + installers
+cargo test -p comfysort-engine   # engine tests (pure Rust, no webview)
 ```
 
-**Build a release bundle**
+## ⌨️ Keyboard essentials
 
-```bash
-npm run tauri build
-```
-
-This produces a standalone **`comfysort.exe`** in `target/release/`, plus **MSI** and **NSIS** installers under `target/release/bundle/`.
-
-**Test the engine** (pure Rust, no Tauri/webview stack — compiles fast):
-
-```bash
-cargo test -p comfysort-engine
-```
-
-> [!NOTE]
-> The Tauri shell's `[lib] crate-type` is currently `["rlib"]` (desktop-only). The mobile `cdylib`/`staticlib` types overflow mingw's PE export table on the Windows-GNU toolchain — re-add them (ideally on MSVC with VS Build Tools) when targeting Android/iOS.
-
-## ⌨️ Keyboard
-
-There's a **focus model**: either the Inbox or the Navigator holds keyboard focus. <kbd>Tab</kbd> toggles it; the focused pane gets a purple border and a `*`. Hotkeys and undo are **global**; navigation routes by focus.
-
-**Global — any focus**
+<kbd>Tab</kbd> toggles focus between the **Inbox** and the **Navigator** (purple border + `*`). Hotkeys and undo are global; navigation routes by focus.
 
 | Key | Action |
 |:--|:--|
-| <kbd>Tab</kbd> | Toggle focus between Inbox and Navigator |
-| <kbd>1</kbd>–<kbd>9</kbd> | Move current file (or selection) to that destination |
-| <kbd>0</kbd> | Move to trash |
-| <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> | **Copy** to that destination — original stays *(in Navigator focus, **binds** the highlighted folder to that slot)* |
-| <kbd>Shift</kbd>+<kbd>D</kbd> | **Copy** the current file into the highlighted / drilled-into Navigator folder (source stays) |
-| <kbd>Ctrl</kbd>+<kbd>U</kbd> | Undo the last operation (multi-step) |
-| <kbd>Ctrl</kbd>+<kbd>N</kbd> | New folder (inline prompt) |
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Toggle inbox sort order |
-| <kbd>F5</kbd> | Refresh / rescan the inbox |
-| <kbd>Esc</kbd> | Close overlay / cancel search |
+| <kbd>1</kbd>–<kbd>9</kbd> / <kbd>0</kbd> | Move current file (or selection) to that target / to trash |
+| <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> | Copy instead of move *(in Navigator: bind highlighted folder to that slot)* |
+| <kbd>Ctrl</kbd>+<kbd>U</kbd> | Undo the last operation — multi-step |
+| <kbd>↑</kbd>/<kbd>↓</kbd> · <kbd>Shift</kbd>+<kbd>↑↓</kbd> | Select · extend multiselection |
+| <kbd>s</kbd> / <kbd>f</kbd> / <kbd>Ctrl</kbd>+<kbd>R</kbd> | Cycle sort field / filter / sort order |
+| <kbd>/</kbd> *(or just type in Navigator)* | Fuzzy-search every folder under the root |
+| <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>D</kbd> | Move / copy into the highlighted Navigator folder |
+| <kbd>→</kbd> <kbd>←</kbd> | Drill into / ascend folders |
+| <kbd>Ctrl</kbd>+<kbd>N</kbd> · <kbd>F5</kbd> · <kbd>Esc</kbd> | New folder · rescan inbox · close / cancel |
 
-**Inbox focus**
-
-| Key | Action |
-|:--|:--|
-| <kbd>↑</kbd>/<kbd>↓</kbd> | Change selection |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Jump to top / bottom |
-| <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> | Extend a contiguous multiselection |
-| <kbd>s</kbd> | Cycle sort field — name / size / modified |
-| <kbd>f</kbd> | Cycle filter — all / images / videos |
-| <kbd>/</kbd> | Open fuzzy folder search |
-
-**Navigator focus**
-
-| Key | Action |
-|:--|:--|
-| <kbd>↑</kbd>/<kbd>↓</kbd> | Move cursor |
-| <kbd>→</kbd> / <kbd>←</kbd> | Drill into folder / ascend |
-| *(type)* | Start typing to fuzzy-find folders anywhere under the root |
-| <kbd>Enter</kbd> | **Move** current file (or selection) into the highlighted folder |
-| <kbd>Shift</kbd>+<kbd>D</kbd> | **Copy** into the highlighted folder (source stays) |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete folder to trash (confirm prompt) |
-| <kbd>Esc</kbd> | Return focus to the Inbox |
-
-**Fuzzy search** — open it with <kbd>/</kbd> from the Inbox, or just start typing while the Navigator is focused. Type to match folders anywhere under the root · <kbd>↑</kbd>/<kbd>↓</kbd> pick · <kbd>Enter</kbd> move into the match · <kbd>Shift</kbd>+<kbd>D</kbd> copy into it · <kbd>Esc</kbd> exit.
-
-You can also **click** any Sort Target or Navigator row to act on it, and **right-click** an inbox item for the context menu.
-
-## ⚙️ Configuration
-
-Open **Settings** with the cog in the header. Changes persist to **`config.toml`** in the app config directory (atomically; missing or older files fall back to per-field defaults, never an error). One struct is the single source of truth for both backend behavior and the frontend.
-
-| Setting | Values | Default |
-|:--|:--|:--|
-| Default input / output folders | paths | *(empty — auto-load when set)* |
-| Collision policy | `rename` · `skip` · `overwrite` | `rename` |
-| Confirm folder delete | on / off | on |
-| Confirm cross-drive move | on / off | on |
-| Default sort field | name · size · modified | modified |
-| Default sort order | ascending · descending | descending |
-| Default filter | all · images · videos | all |
-| Video autoplay / loop / muted | on / off | on |
-| Check for updates on launch | on / off | on |
-| Theme | Comfy Dark · Nord · Gruvbox · Catppuccin | Comfy Dark |
-
-Set **default folders** and comfysort auto-loads that session on launch. Only the collision policy drives backend behavior (threaded into move/copy — trash and folder-delete always rename); the rest are read by the frontend. A button in Settings opens `config.toml` in your editor.
+Everything is also clickable — sort targets, navigator rows, and a right-click context menu on inbox items.
 
 ## 🛟 How it stays safe
 
-> [!CAUTION]
-> comfysort mutates files on disk. These invariants are why it's safe to drive at speed:
+- **No autonomous moves** — every mutation requires an explicit action.
+- **Journal first** — append-only JSONL at `<output>/.comfysort/journal.jsonl`.
+- **Soft delete only** — trash renames into `.comfysort/.trash/`, never an `rm`.
+- **Collisions never clobber** — Explorer-style `name (2).ext` renames by default.
+- **Cross-drive moves are verified** — copy → verify size → delete source, behind a confirm.
+- **Undo is real** — a session stack walks every operation back; the action history reverts single files.
 
-- **No autonomous moves.** Every mutation requires an explicit user action — there is no auto-sort.
-- **Journal intent, then result.** Append-only JSONL at `<output>/.comfysort/journal.jsonl`.
-- **Soft delete only.** "Trash" renames into `<output>/.comfysort/.trash/` — reversible — never an `rm`.
-- **Collisions never clobber.** Conflicts get Explorer-style `name (2).ext` suffixes; the default policy is `rename`, never `overwrite`.
-- **Cross-volume moves are verified.** Across a drive/share boundary it copies → verifies size → deletes the source (source kept until verified), behind a confirm modal.
-- **Undo is real.** A session stack walks every op back: move → restore, copy → unlink duplicate, trash → restore.
+## 🧱 Under the hood
 
-## 🧱 Tech stack & architecture
+**Tauri v2 + SvelteKit (Svelte 5, SPA) + TypeScript** over a **pure-Rust engine**. The engine (`crates/engine`) has no Tauri imports and is fully testable on its own; all filesystem mutation lives in its operations layer. The Tauri shell (`src-tauri`) is the only IPC bridge, and the frontend mirrors the engine DTOs through one typed wrapper — mutating commands return small deltas so a 25k-file inbox never re-serializes.
 
-Built with **Tauri v2** + **SvelteKit (Svelte 5, SPA)** + **TypeScript** over a **pure-Rust engine**.
-
-It's a Cargo workspace with two members. The engine has **no Tauri imports** and is fully testable on its own; the Tauri shell is the only bridge to it. Filesystem mutation lives entirely in the engine's operations layer — never in command glue or the frontend.
-
-```
-comfysort-tauri/
-├── Cargo.toml             # workspace root (members: src-tauri, crates/engine)
-├── src/                   # SvelteKit frontend (SPA, ssr=false)
-│   ├── routes/+page.svelte    # the app shell + global key dispatch
-│   └── lib/                   # components, stores, api wrapper, themes, tokens
-├── src-tauri/             # Tauri shell — commands.rs is the only IPC bridge
-└── crates/engine/         # pure-Rust engine: journaled ops, undo, scan, search
-    ├── domain.rs              # core types + serde DTOs sent to the frontend
-    ├── media.rs               # media-kind detection + inbox scan
-    ├── destinations.rs        # destination scan + recursive media counts
-    ├── operations.rs          # journaled move/copy/trash + collision + relocate
-    ├── persistence.rs         # per-root saved hotkey bindings (bindings.json)
-    ├── search.rs              # recursive fuzzy folder search
-    ├── settings.rs            # config.toml schema + load/save
-    └── session.rs             # in-memory session state (roots, items, op stack)
-```
-
-The frontend mirrors the engine DTOs in a single typed IPC wrapper (`src/lib/api.ts`). The inbox is sent in full only when a session opens; mutating commands return small deltas so the frontend updates its local list without re-serializing thousands of items.
+Settings persist atomically to `config.toml` (theme, collision policy, confirms, defaults — set default folders and comfysort opens straight into them).
 
 ## 🗺️ Roadmap
 
-- [ ] Restart-safe undo via journal replay (per-session multi-step undo already works)
-- [ ] File operations on a worker queue for very large batches
-- [ ] Recursive inbox folders with breadcrumbs
-- [ ] Richer media metadata (EXIF, codec, color depth)
-- [ ] Backend thumbnail pipeline for huge inboxes
-- [ ] macOS / Linux bundles and a release pipeline
+Restart-safe undo via journal replay · worker queue for huge batches · recursive inbox with breadcrumbs · richer media metadata (EXIF, codec) · backend thumbnail pipeline · macOS / Linux bundles.
 
 ## 📜 License
 
-Released under the **[MIT License](LICENSE)** — © 2026 kpg-anon.
+**[MIT](LICENSE)** — © 2026 kpg-anon.
 
 ---
 
