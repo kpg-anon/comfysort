@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "comfysort"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "anyhow",
  "comfysort-engine",
@@ -505,7 +505,7 @@ dependencies = [
 
 [[package]]
 name = "comfysort-engine"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "anyhow",
  "chrono",
