@@ -1,6 +1,6 @@
 [package]
 name = "comfysort"
-version = "0.4.3"
+version = "0.4.4"
 description = "A calm, preview-first desktop workstation for sorting media — fast."
 authors = ["kpg-anon"]
 license = "MIT"
