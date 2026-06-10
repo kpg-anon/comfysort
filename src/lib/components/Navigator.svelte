@@ -217,6 +217,9 @@
       <button onclick={() => session.startRename(session.navCtx!.folder)}>
         <span class="nf">{I.edit}</span> Rename…
       </button>
+      <button class="danger" onclick={() => session.deleteCtxFolder()}>
+        <span class="nf">{I.trash}</span> Delete to trash…
+      </button>
     </div>
   {/if}
 </section>
@@ -329,4 +332,6 @@
   }
   .navctx button:hover { background: var(--bg-panel-alt); color: var(--text-primary); }
   .navctx .nf { color: var(--purple); font-size: 12px; width: 14px; text-align: center; }
+  .navctx button.danger .nf { color: var(--red); }
+  .navctx button.danger:hover { color: var(--red); }
 </style>

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.6] — 2026-06-10
+
+### Added
+- **Delete from the Navigator context menu** — right-click a folder → "Delete to trash…", the same reversible flow as Ctrl+D.
+
+### Changed
+- The cross-drive and folder-delete confirmations share a redesigned themed modal: accent-tinted header with an icon tile, blurred backdrop, and keyboard-hinted buttons. Folder deletes no longer use the bare browser confirm box, and the prompt now says what the folder holds ("3 media files · 2 subfolders").
+
+### Fixed
+- The refresh status reported the inbox total ("Refreshed — 10 items"); it now reports what the rescan actually found: "Refreshed — 0 new items".
+
 ## [0.4.5] — 2026-06-10
 
 ### Fixed
@@ -124,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.6
 [0.4.5]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.5
 [0.4.4]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.4
 [0.4.3]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.3

@@ -31,6 +31,14 @@ export interface CrossPrompt {
   run: () => Promise<void>;
 }
 
+/** A folder delete (to trash), awaiting confirmation. */
+export interface DeletePrompt {
+  name: string;
+  /** "3 media files · 2 subfolders" — empty for an empty folder. */
+  contents: string;
+  run: () => Promise<void>;
+}
+
 /** Hotkey slots that can be bound (mirrors the TUI's `is_bindable_hotkey`). */
 export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
 
@@ -102,6 +110,8 @@ class SessionStore {
   // Cross-drive move confirmation (session opt-in like the TUI).
   allowCrossDevice = $state(false);
   crossPrompt = $state<CrossPrompt | null>(null);
+  // Folder-delete confirmation (themed modal, not the browser confirm box).
+  deletePrompt = $state<DeletePrompt | null>(null);
 
   // Inline new-folder prompt, driven by the + button or Ctrl+N.
   creatingFolder = $state(false);
@@ -450,14 +460,18 @@ class SessionStore {
   async refreshInbox() {
     this.closeContext();
     try {
+      // Report what the rescan *found*, not the inbox total: how many files
+      // are new since the last scan (external additions).
+      const known = new Set(this.allItems.map((x) => x.path));
       const items = await api.rescanInbox();
+      const fresh = items.filter((x) => !known.has(x.path)).length;
       const curPath = this.current?.path;
       this.allItems = items;
       const i = curPath ? this.view.findIndex((x) => x.path === curPath) : -1;
       this.cursor = i >= 0 ? i : Math.min(this.cursor, Math.max(0, this.view.length - 1));
       this.clearSelection();
       this.fetchDisk(true);
-      this.setStatus(`Refreshed — ${items.length} items`, "info");
+      this.setStatus(`Refreshed — ${fresh} new item${fresh === 1 ? "" : "s"}`, "info");
     } catch (e) {
       this.setStatus(String(e), "bad");
     }
@@ -692,12 +706,41 @@ class SessionStore {
   }
   async deleteHighlightedFolder() {
     const folder = this.navHighlighted;
-    if (!folder) return;
-    const tag = folder.mediaCount + folder.subfolderCount > 0 ? " (not empty)" : "";
-    if (settings.confirmFolderDelete && !confirm(`Move "${folder.name}"${tag} to trash? This can be undone.`))
+    if (folder) this.requestDeleteFolder(folder);
+  }
+
+  /** Delete the right-clicked Navigator folder (context-menu entry). */
+  deleteCtxFolder() {
+    const folder = this.navCtx?.folder;
+    this.closeNavContext();
+    if (folder) this.requestDeleteFolder(folder);
+  }
+
+  /** Route a folder delete through the themed confirm modal (when the
+   *  confirm-folder-delete setting is on), then trash it reversibly. */
+  requestDeleteFolder(folder: FolderEntry) {
+    const run = async () => {
+      await this.runOne(() => api.deleteFolder(folder.path), "Deleting…");
+      if (this.nav) await this.loadFolders(this.nav.path);
+    };
+    if (!settings.confirmFolderDelete) {
+      void run();
       return;
-    await this.runOne(() => api.deleteFolder(folder.path), "Deleting…");
-    if (this.nav) await this.loadFolders(this.nav.path);
+    }
+    const bits: string[] = [];
+    if (folder.mediaCount > 0)
+      bits.push(`${folder.mediaCount} media file${folder.mediaCount === 1 ? "" : "s"}`);
+    if (folder.subfolderCount > 0)
+      bits.push(`${folder.subfolderCount} subfolder${folder.subfolderCount === 1 ? "" : "s"}`);
+    this.deletePrompt = { name: folder.name, contents: bits.join(" · "), run };
+    this.setStatus("Confirm folder delete", "info");
+  }
+
+  /** Resolve the folder-delete prompt: trash it, or cancel. */
+  async resolveDelete(confirmed: boolean) {
+    const prompt = this.deletePrompt;
+    this.deletePrompt = null;
+    if (confirmed && prompt) await prompt.run();
   }
 
   // ---- Navigator fuzzy search ----------------------------------------------

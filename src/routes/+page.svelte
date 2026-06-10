@@ -15,6 +15,7 @@
   import HistoryPanel from "$lib/components/HistoryPanel.svelte";
   import SortTargetsEditor from "$lib/components/SortTargetsEditor.svelte";
   import Tooltip from "$lib/components/Tooltip.svelte";
+  import ConfirmModal from "$lib/components/ConfirmModal.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
 
@@ -39,10 +40,11 @@
   $effect(() => {
     document.documentElement.dataset.theme = settings.theme;
   });
-  // When the cross-drive prompt opens, drop focus from any text field so its
+  // When a confirm prompt opens, drop focus from any text field so its
   // y/a/n keys aren't captured by an input.
   $effect(() => {
-    if (session.crossPrompt) (document.activeElement as HTMLElement | null)?.blur();
+    if (session.crossPrompt || session.deletePrompt)
+      (document.activeElement as HTMLElement | null)?.blur();
   });
 
   // Resolve a layout-stable hotkey slot from a KeyboardEvent.code.
@@ -105,6 +107,15 @@
       if (k === "y") session.resolveCross("once");
       else if (k === "a") session.resolveCross("always");
       else if (k === "n" || e.key === "Escape") session.resolveCross("cancel");
+      return;
+    }
+
+    // --- Modal: folder-delete confirm — y/Enter deletes, n/Esc cancels. ---
+    if (session.deletePrompt) {
+      e.preventDefault();
+      const k = e.key.toLowerCase();
+      if (k === "y" || e.key === "Enter") session.resolveDelete(true);
+      else if (k === "n" || e.key === "Escape") session.resolveDelete(false);
       return;
     }
 
@@ -274,28 +285,41 @@
   </div>
 
   {#if session.crossPrompt}
-    <div class="modal-scrim">
-      <div class="modal">
-        <div class="mhead">
-          <span class="micon nf">{I.warn}</span>
-          <div class="mheadtext">
-            <div class="mtitle">Cross-drive move</div>
-            <div class="msub">Copies across drives, then removes the source — slower than a same-drive move.</div>
-          </div>
-        </div>
-        <p class="mbody">
-          Move <b>{session.crossPrompt.count}
-          {session.crossPrompt.count === 1 ? "file" : "files"}</b> from
-          <b class="vol">{session.crossPrompt.sourceVolume}</b> into
-          <b class="dest">{session.crossPrompt.destLabel}</b>?
-        </p>
-        <div class="mrow">
-          <button class="mbtn go" onclick={() => session.resolveCross("once")}><kbd>y</kbd> Move once</button>
-          <button class="mbtn always" onclick={() => session.resolveCross("always")}><kbd>a</kbd> Always this session</button>
-          <button class="mbtn cancel" onclick={() => session.resolveCross("cancel")}><kbd>n</kbd> Cancel</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmModal
+      accent="orange"
+      icon={I.warn}
+      title="Cross-drive move"
+      subtitle="Copies across drives, then removes the source — slower than a same-drive move."
+      buttons={[
+        { key: "y", label: "Move once", kind: "primary", action: () => session.resolveCross("once") },
+        { key: "a", label: "Always this session", kind: "accent", action: () => session.resolveCross("always") },
+        { key: "n", label: "Cancel", kind: "ghost", action: () => session.resolveCross("cancel") },
+      ]}
+    >
+      Move <b>{session.crossPrompt.count}
+      {session.crossPrompt.count === 1 ? "file" : "files"}</b> from
+      <b style="color: var(--orange)">{session.crossPrompt.sourceVolume}</b> into
+      <b style="color: var(--green)">{session.crossPrompt.destLabel}</b>?
+    </ConfirmModal>
+  {/if}
+
+  {#if session.deletePrompt}
+    <ConfirmModal
+      accent="red"
+      icon={I.trash}
+      title="Delete folder"
+      subtitle="Moves the folder into the session trash — reversible with Ctrl+U or the action history."
+      buttons={[
+        { key: "y", label: "Delete to trash", kind: "primary", action: () => session.resolveDelete(true) },
+        { key: "n", label: "Cancel", kind: "ghost", action: () => session.resolveDelete(false) },
+      ]}
+    >
+      Move <b>"{session.deletePrompt.name}"</b>
+      {#if session.deletePrompt.contents}
+        — holding <b style="color: var(--yellow)">{session.deletePrompt.contents}</b> —
+      {/if}
+      to trash?
+    </ConfirmModal>
   {/if}
 
   <Settings />
@@ -327,72 +351,5 @@
     gap: var(--gap);
     min-height: 0;
   }
-  .modal-scrim {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 10, 13, 0.62);
-    display: grid;
-    place-items: center;
-    z-index: 50;
-    animation: mfade 0.12s ease-out;
-  }
-  .modal {
-    width: 460px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--orange);
-    border-radius: 12px;
-    padding: 20px 22px 18px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-    animation: mpop 0.13s ease-out;
-  }
-  @keyframes mfade { from { opacity: 0; } }
-  @keyframes mpop { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
-  .mhead { display: flex; gap: 13px; align-items: flex-start; margin-bottom: 14px; }
-  .micon {
-    flex: none; width: 34px; height: 34px; border-radius: 9px;
-    display: grid; place-items: center; font-size: 16px;
-    color: var(--orange);
-    background: color-mix(in srgb, var(--orange) 16%, transparent);
-    border: 1px solid color-mix(in srgb, var(--orange) 35%, var(--border));
-  }
-  .mtitle { color: var(--text-primary); font-weight: 700; font-size: 14px; }
-  .msub { color: var(--text-muted); font-size: 11.5px; margin-top: 2px; line-height: 1.4; }
-  .mbody { color: var(--text-secondary); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
-  .mbody b { color: var(--text-primary); }
-  .mbody .vol { color: var(--orange); }
-  .mbody .dest { color: var(--green); }
-  .mrow { display: flex; gap: 8px; }
-  .mbtn {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 9px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-chip);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .mbtn:hover { border-color: var(--text-muted); color: var(--text-primary); }
-  .mbtn.go {
-    background: var(--green); color: var(--text-inverse);
-    border-color: var(--green); font-weight: 600;
-  }
-  .mbtn.go:hover { filter: brightness(1.06); border-color: var(--green); }
-  .mbtn.always { color: var(--orange); }
-  .mbtn.always:hover { border-color: var(--orange); }
-  .mbtn.cancel { color: var(--text-muted); }
-  .mbtn kbd {
-    font-family: var(--mono);
-    background: var(--bg-app);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0 4px;
-    font-size: 11px;
-  }
-  .mbtn.go kbd { background: rgba(0, 0, 0, 0.18); border-color: rgba(0, 0, 0, 0.22); color: var(--text-inverse); }
+  /* The cross-drive / folder-delete confirm UIs live in ConfirmModal.svelte. */
 </style>
