@@ -58,8 +58,8 @@ export const api = {
   pickDirectory: (title?: string): Promise<string | null> =>
     invoke("pick_directory", { title }),
 
-  openSession: (input: string, output: string): Promise<SessionView> =>
-    invoke("open_session", { input, output }),
+  openSession: (input: string, output: string, recursive: boolean): Promise<SessionView> =>
+    invoke("open_session", { input, output, recursive }),
 
   moveItem: (source: string, destDir: string): Promise<OpOutcome> =>
     invoke("move_item", { source, destDir }),
@@ -115,6 +115,8 @@ export const api = {
   setSettings: (settings: Settings): Promise<void> => invoke("set_settings", { settings }),
   setCollisionPolicy: (policy: string): Promise<void> =>
     invoke("set_collision_policy", { policy }),
+  setRecursiveInbox: (recursive: boolean): Promise<void> =>
+    invoke("set_recursive_inbox", { recursive }),
 };
 
 export interface DiskSpace {
@@ -135,6 +137,7 @@ export interface Settings {
   videoLoop: boolean;
   videoMuted: boolean;
   autoUpdateCheck: boolean;
+  recursiveInbox: boolean;
   theme: string;
   defaultInput: string;
   defaultOutput: string;
@@ -151,6 +154,7 @@ export const DEFAULT_SETTINGS: Settings = {
   videoLoop: true,
   videoMuted: true,
   autoUpdateCheck: true,
+  recursiveInbox: false,
   theme: "comfy-dark",
   defaultInput: "",
   defaultOutput: "",

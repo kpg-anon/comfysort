@@ -22,7 +22,12 @@
       role="switch"
       aria-checked={value}
       aria-label={name}
-      onclick={() => settings.set(key, !value as never)}
+      onclick={async () => {
+        await settings.set(key, !value as never);
+        // The recursion flag changes what a scan returns — rescan the open
+        // inbox immediately so the toggle takes effect without a manual F5.
+        if (key === "recursiveInbox" && session.input) session.refreshInbox();
+      }}
     ><span class="knob"></span></button>
   </div>
 {/snippet}
@@ -99,6 +104,12 @@
 
         <section>
           <h3>Behavior</h3>
+          {@render toggleRow(
+            "Recursive inbox scan",
+            "Walk every subfolder of the inbox folder(s) and merge their media into the queue.",
+            settings.recursiveInbox,
+            "recursiveInbox",
+          )}
           {@render selectRow(
             "Collision policy",
             "When a file with the same name already exists at the destination.",

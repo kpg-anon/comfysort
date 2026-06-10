@@ -2,6 +2,7 @@
   import { session } from "$lib/session.svelte";
   import { humanSize, extOf } from "$lib/api";
   import { kindIcon } from "$lib/icons";
+  import { tip } from "$lib/tooltip.svelte";
 
   // Virtualized list: only the visible window of rows is in the DOM, so a 25k+
   // inbox stays responsive (was rendering every row → ~150k DOM nodes).
@@ -38,7 +39,7 @@
     <span class="modes">sort <span class="vsort">{session.sortField}{arrow}</span> · filter <span class="vfilter">{session.filter}</span></span>
   </div>
   <div class="cols">
-    <span>Name</span><span class="r">Size</span><span class="c">Type</span>
+    <span>Name</span><span class="c">Size</span><span class="c">Type</span>
   </div>
   <div
     class="list"
@@ -58,7 +59,7 @@
             onclick={(e) => session.clickRow(i, e.shiftKey)}
             oncontextmenu={(e) => session.openContext(e, item, i)}
           >
-            <span class="name" title={item.fileName}>
+            <span class="name" use:tip={item.fileName}>
               <span class="nf kind kind-{item.kind}">{kindIcon(item.kind)}</span>
               <span class="nm">{item.fileName}</span>
             </span>
@@ -105,7 +106,6 @@
     padding: 2px 13px 6px; color: var(--text-muted); font-size: 11px;
     border-bottom: 1px solid var(--border-muted);
   }
-  .cols .r { text-align: right; }
   .cols .c { text-align: center; }
   .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 5px; position: relative; }
   .viewport { position: relative; width: 100%; }

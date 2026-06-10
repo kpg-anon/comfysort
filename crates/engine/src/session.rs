@@ -1,4 +1,4 @@
-//! In-memory session state: the roots, the live destination list, and the
+﻿//! In-memory session state: the roots, the live destination list, and the
 //! operation engine. Wrapped in a `Mutex` and `manage`d by Tauri.
 
 use crate::destinations::{count_media, count_media_recursive, scan_destinations};
@@ -20,11 +20,12 @@ fn is_bindable_hotkey(hotkey: char) -> bool {
 }
 
 /// Scan one or more `;`-separated input directories, merging their media into a
-/// single newest-first inbox. Empty segments are ignored.
-fn scan_inputs(input: &str) -> anyhow::Result<Vec<MediaItemDto>> {
+/// single newest-first inbox. Empty segments are ignored. With `recursive`,
+/// every input's subtree is walked instead of just its top level.
+fn scan_inputs(input: &str, recursive: bool) -> anyhow::Result<Vec<MediaItemDto>> {
     let mut items = Vec::new();
     for dir in input.split(';').map(str::trim).filter(|s| !s.is_empty()) {
-        items.extend(scan_inbox(Path::new(dir))?);
+        items.extend(scan_inbox(Path::new(dir), recursive)?);
     }
     items.sort_by(|a, b| {
         b.modified_ms
@@ -44,12 +45,19 @@ pub struct Session {
     /// Collision policy applied to user-initiated moves/copies. Trash and folder
     /// delete always force `Rename` regardless of this, so they never clobber.
     collision_policy: CollisionPolicy,
+    /// Walk inbox subfolders too (Settings "Recursive inbox scan").
+    recursive_inbox: bool,
 }
 
 impl Session {
     /// Open a session against the given roots, scanning inbox + destinations.
-    pub fn open(input: String, output: PathBuf) -> anyhow::Result<(Self, SessionView)> {
-        let inbox = scan_inputs(&input)?;
+    /// `recursive` walks every inbox subfolder instead of just the top level.
+    pub fn open(
+        input: String,
+        output: PathBuf,
+        recursive: bool,
+    ) -> anyhow::Result<(Self, SessionView)> {
+        let inbox = scan_inputs(&input, recursive)?;
         let mut destinations = scan_destinations(&output)?;
         let engine = OperationEngine::new(journal_path(&output));
 
@@ -140,6 +148,7 @@ impl Session {
             engine,
             user_bindings,
             collision_policy: CollisionPolicy::Rename,
+            recursive_inbox: recursive,
         };
         Ok((session, view))
     }
@@ -150,10 +159,16 @@ impl Session {
         self.collision_policy = p;
     }
 
+    /// Toggle the recursive inbox walk for subsequent rescans (the Settings
+    /// toggle flips this on the live session, then triggers a refresh).
+    pub fn set_recursive_inbox(&mut self, recursive: bool) {
+        self.recursive_inbox = recursive;
+    }
+
     /// Re-scan the input directory (e.g. after external changes) and return the
     /// fresh inbox. Destinations are left as-is; call after a manual refresh.
     pub fn rescan_inbox(&self) -> anyhow::Result<Vec<MediaItemDto>> {
-        scan_inputs(&self.input)
+        scan_inputs(&self.input, self.recursive_inbox)
     }
 
     /// List the immediate child folders of `dir` for the Navigator. `dir` is
@@ -166,7 +181,7 @@ impl Session {
             for entry in entries.flatten() {
                 let path = entry.path();
                 // `file_type()` (from the enumeration) over a full `metadata()`
-                // stat — we only need the dir bit here.
+                // stat â€” we only need the dir bit here.
                 if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                     continue;
                 }
@@ -180,7 +195,7 @@ impl Session {
                 folders.push(FolderEntry {
                     // Recursive subtree total so a parent holding only subfolders
                     // still shows its true descendant media count instead of (0).
-                    // `subfolder_count` stays immediate — it only drives a
+                    // `subfolder_count` stays immediate â€” it only drives a
                     // "has children" indicator. The deeper walk's cost is borne on
                     // navigation (on-demand, debounced on the frontend).
                     media_count: count_media_recursive(&path),
@@ -571,7 +586,7 @@ impl Session {
         match kind {
             OperationKind::Copy => Ok(self.outcome(
                 OpKind::Undo,
-                "Reverted — removed copy".to_owned(),
+                "Reverted â€” removed copy".to_owned(),
                 resolved,
                 resolved,
                 false,
@@ -581,7 +596,7 @@ impl Session {
                 let restored = MediaItemDto::from_path(source);
                 Ok(self.outcome(
                     OpKind::Undo,
-                    "Reverted — restored to inbox".to_owned(),
+                    "Reverted â€” restored to inbox".to_owned(),
                     resolved,
                     source,
                     false,
@@ -604,11 +619,11 @@ impl Session {
                 return true;
             }
             if dest.is_trash || is_top_level(&dest.path) {
-                // Real destination — keep it, just drop the hotkey.
+                // Real destination â€” keep it, just drop the hotkey.
                 dest.hotkey = None;
                 true
             } else {
-                // Only present because of the bind — remove it entirely.
+                // Only present because of the bind â€” remove it entirely.
                 false
             }
         });
@@ -657,7 +672,7 @@ impl Session {
     /// Adjust the in-memory `media_count` of the destination whose path equals
     /// `dir` by `delta` (saturating at 0). Matched by `Path` equality, not
     /// string. If no destination row matches (e.g. a move into a deep nested
-    /// folder that isn't a bound destination) this is a no-op — there's simply
+    /// folder that isn't a bound destination) this is a no-op â€” there's simply
     /// nothing to bump. This replaces a full destination rescan per operation:
     /// O(num_destinations) `read_dir` calls become 0.
     fn bump_dest_count(&mut self, dir: &Path, delta: i64) {
@@ -720,7 +735,7 @@ fn count_subfolders(path: &Path) -> usize {
             entries
                 .flatten()
                 // `file_type()` (free from read_dir) over a full `metadata()`
-                // stat — single pass, only the dir bit is needed.
+                // stat â€” single pass, only the dir bit is needed.
                 .filter(|e| {
                     e.file_type().map(|t| t.is_dir()).unwrap_or(false)
                         && !e
@@ -762,7 +777,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
         assert_eq!(count_of(&session, &keep), 0);
 
         // Poison `other`'s in-memory count with a sentinel. If the op path did a
@@ -806,7 +821,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
         session.move_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -825,7 +840,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
         session.copy_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -843,7 +858,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone()).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
         let trash = trash_dir(&output);
         assert_eq!(count_of(&session, &trash), 0);
 

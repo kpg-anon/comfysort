@@ -106,8 +106,9 @@ pub fn open_session(
     state: State<'_, AppState>,
     input: String,
     output: String,
+    recursive: bool,
 ) -> CmdResult<SessionView> {
-    let (session, view) = Session::open(input, PathBuf::from(output))
+    let (session, view) = Session::open(input, PathBuf::from(output), recursive)
         .map_err(|e| e.to_string())?;
     *state.session.lock().map_err(|_| "session lock poisoned")? = Some(session);
     Ok(view)
@@ -317,6 +318,18 @@ pub fn set_collision_policy(state: State<'_, AppState>, policy: String) -> CmdRe
     let mut guard = state.session.lock().map_err(|_| "session lock poisoned")?;
     if let Some(session) = guard.as_mut() {
         session.set_collision_policy(parsed);
+    }
+    Ok(())
+}
+
+/// Apply the recursive-inbox flag to the live session (if one is open), so the
+/// next rescan walks (or stops walking) subfolders. A no-op `Ok(())` when no
+/// session is open. Persisting the choice is the frontend's job via `set_settings`.
+#[tauri::command]
+pub fn set_recursive_inbox(state: State<'_, AppState>, recursive: bool) -> CmdResult<()> {
+    let mut guard = state.session.lock().map_err(|_| "session lock poisoned")?;
+    if let Some(session) = guard.as_mut() {
+        session.set_recursive_inbox(recursive);
     }
     Ok(())
 }

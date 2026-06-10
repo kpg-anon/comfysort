@@ -273,7 +273,7 @@ class SessionStore {
     this.busy = true;
     this.error = null;
     try {
-      const view = await api.openSession(input, output);
+      const view = await api.openSession(input, output, settings.recursiveInbox);
       this.input = view.input;
       this.output = view.output;
       this.allItems = view.inbox;

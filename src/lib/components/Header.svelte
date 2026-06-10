@@ -37,6 +37,9 @@
       ? "Inbox folders:\n" + inputParts.map(norm).join("\n")
       : inputParts[0] ? norm(inputParts[0]) : "No inbox folder selected",
   );
+  const outputTip = $derived(
+    session.output ? norm(session.output) : "No destination root selected",
+  );
 </script>
 
 <header>
@@ -71,17 +74,15 @@
   {/if}
 
   <div class="right">
-    <button
-      class="chip output"
-      title={"Destination root: " + (session.output ?? "") + "\nClick to choose a different root"}
-      onclick={() => session.changeOutput()}
-    >
-      <span class="nf gi">{I.drive}</span>
-      <span class="txt">{session.output ? leaf(session.output) : ""}</span>
-    </button>
+    <span class="tip tip-r chipwrap" data-tip={outputTip}>
+      <button class="chip output" onclick={() => session.changeOutput()}>
+        <span class="nf gi">{I.drive}</span>
+        <span class="txt">{session.output ? leaf(session.output) : ""}</span>
+      </button>
+    </span>
     <span class="brand">comfysort{version ? ` ${version}` : ""}</span>
-    <button class="cog nf" title="Action history" onclick={() => session.toggleHistory()}>{I.history}</button>
-    <button class="cog nf" title="Settings" onclick={() => settings.toggleOpen()}>{I.cog}</button>
+    <button class="cog nf tip tip-r" data-tip="Action history" onclick={() => session.toggleHistory()}>{I.history}</button>
+    <button class="cog nf tip tip-r" data-tip="Settings" onclick={() => settings.toggleOpen()}>{I.cog}</button>
   </div>
 </header>
 
@@ -127,7 +128,8 @@
   .iconbtn .nf { display: inline-block; line-height: 1; }
   .iconbtn.spinning .nf { animation: cs-spin 0.6s ease; }
   @keyframes cs-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  /* Themed in-app tooltip (replaces the OS title box). */
+  /* Themed in-app tooltip (replaces the OS title box). The explicit sans
+     font matters on .nf buttons, whose own font is the icon glyph set. */
   .tip { position: relative; }
   .tip:hover::after {
     content: attr(data-tip);
@@ -136,8 +138,12 @@
     background: var(--bg-panel); color: var(--text-secondary);
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 7px 10px; font-size: 11px; line-height: 1.55; white-space: pre-line;
+    font-family: var(--sans); font-weight: 400;
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5); pointer-events: none;
   }
+  /* Right-edge elements anchor the tooltip to their right side so it can
+     never overflow the window. */
+  .tip-r:hover::after { left: auto; right: 0; }
   .gi { font-size: 12px; flex: none; opacity: 0.9; }
   .status {
     justify-self: center;

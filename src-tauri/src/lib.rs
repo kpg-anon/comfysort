@@ -41,6 +41,7 @@ pub fn run() {
             commands::config_file_path,
             commands::set_settings,
             commands::set_collision_policy,
+            commands::set_recursive_inbox,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

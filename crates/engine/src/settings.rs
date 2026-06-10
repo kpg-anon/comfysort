@@ -35,6 +35,9 @@ pub struct Settings {
     /// Check GitHub Releases for a newer version on launch and offer to update.
     #[serde(default = "default_true")]
     pub auto_update_check: bool,
+    /// Walk every subfolder of the inbox folder(s) instead of just the top level.
+    #[serde(default)]
+    pub recursive_inbox: bool,
     #[serde(default = "default_theme")]
     pub theme: String,
     /// Optional default inbox/destination. When both are set, the app opens
@@ -77,6 +80,7 @@ impl Default for Settings {
             video_loop: true,
             video_muted: true,
             auto_update_check: true,
+            recursive_inbox: false,
             theme: default_theme(),
             default_input: String::new(),
             default_output: String::new(),
@@ -143,6 +147,7 @@ mod tests {
             video_loop: false,
             video_muted: false,
             auto_update_check: false,
+            recursive_inbox: true,
             theme: "nord".to_owned(),
             default_input: "C:/in".to_owned(),
             default_output: "C:/out".to_owned(),

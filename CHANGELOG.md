@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-06-10
+
+### Added
+- **Recursive inbox scan** — a new Behavior toggle in Settings walks every subfolder of the inbox folder(s) and merges nested media into the queue. Off by default; flipping it rescans the open inbox immediately, and the choice persists to `config.toml` like everything else.
+
+### Changed
+- The destination-root chip and the history/settings buttons use the same themed tooltip as the rest of the header (no more OS tooltip box).
+- Inbox filenames show the full name in the shared themed tooltip instead of the OS one.
+
+### Fixed
+- The inbox "Size" column header is centered over its column like "Type" (was right-aligned).
+
 ## [0.4.3] — 2026-06-03
 
 ### Changed
@@ -105,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.4
 [0.4.3]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.3
 [0.4.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.2
 [0.4.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.1
