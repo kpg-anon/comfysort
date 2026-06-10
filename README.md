@@ -64,7 +64,7 @@ Pick an **inbox** and a **destination root**, preview the current file, press <k
 | `comfysort_<version>_x64-setup.exe` | NSIS installer — Start-menu entry + uninstaller |
 | `comfysort_<version>_x64_en-US.msi` | MSI — managed / silent installs |
 
-Needs the **WebView2** runtime (preinstalled on Windows 10/11; the installer fetches it if missing). Builds are currently unsigned, so SmartScreen may warn on first launch — **More info → Run anyway**. Release notes mirror the [changelog](CHANGELOG.md).
+Needs the **WebView2 Runtime**, the Edge-based system component that ships with Windows 11 (and current Windows 10) — the installers download it automatically in the rare case it's missing. Everything else the app needs, including `WebView2Loader.dll`, is bundled inside every package. Builds are currently unsigned, so SmartScreen may warn on first launch — **More info → Run anyway**. Release notes mirror the [changelog](CHANGELOG.md).
 
 ## 🛠️ Build from source
 
