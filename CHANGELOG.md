@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] — 2026-06-10
+
+### Fixed
+- **The setup.exe installer now ships `WebView2Loader.dll`.** The NSIS bundle was missing the loader DLL the exe needs at runtime, so a fresh setup.exe install — and every in-app update, which installs via the NSIS package — produced an app that failed to launch ("WebView2Loader.dll was not found" / error 0xc00004bc on relaunch). The MSI already shipped it; now both do. In-app updates land on a working install again from this release forward.
+
 ## [0.4.6] — 2026-06-10
 
 ### Added
@@ -135,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.7
 [0.4.6]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.6
 [0.4.5]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.5
 [0.4.4]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.4

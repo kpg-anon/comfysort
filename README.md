@@ -112,7 +112,7 @@ Settings persist atomically to `config.toml` (theme, collision policy, confirms,
 
 ## 🗺️ Roadmap
 
-Restart-safe undo via journal replay · worker queue for huge batches · recursive inbox with breadcrumbs · richer media metadata (EXIF, codec) · backend thumbnail pipeline · macOS / Linux bundles.
+Restart-safe undo via journal replay · worker queue for huge batches · breadcrumbs for the recursive inbox · self-updating portable build · richer media metadata (EXIF, codec) · backend thumbnail pipeline · macOS / Linux bundles.
 
 ## 📜 License
 
