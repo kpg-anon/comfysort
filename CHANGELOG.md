@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] — 2026-06-10
+
+### Fixed
+- **Portable builds no longer run the installer on update.** The update notice now detects a portable copy (the `config.toml` beside the exe) and offers the new portable zip as a download instead of silently running the NSIS installer — which installed a second copy elsewhere and could fail with a missing `WebView2Loader.dll`. Installed (setup.exe / MSI) builds keep the one-click in-app update.
+
+> Note for portable users on 0.4.3/0.4.4: this fix ships *in* 0.4.5, so the update prompt in your current version still shows the old behavior — press **Later** and update once by replacing your folder with the [0.4.5 portable zip](https://github.com/kpg-anon/comfysort/releases/tag/v0.4.5). From 0.4.5 on, the prompt does the right thing.
+
 ## [0.4.4] — 2026-06-10
 
 ### Added
@@ -117,7 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.5
 [0.4.4]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.4
 [0.4.3]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.3
 [0.4.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.2

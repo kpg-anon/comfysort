@@ -117,6 +117,7 @@ export const api = {
     invoke("set_collision_policy", { policy }),
   setRecursiveInbox: (recursive: boolean): Promise<void> =>
     invoke("set_recursive_inbox", { recursive }),
+  isPortable: (): Promise<boolean> => invoke("is_portable", {}),
 };
 
 export interface DiskSpace {

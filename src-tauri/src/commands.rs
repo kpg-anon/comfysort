@@ -322,6 +322,18 @@ pub fn set_collision_policy(state: State<'_, AppState>, policy: String) -> CmdRe
     Ok(())
 }
 
+/// Whether the app runs in portable mode — a `config.toml` beside the exe (the
+/// portable zip ships one; see `config_path`). The updater must not run the
+/// NSIS installer for a portable copy: it would install elsewhere instead of
+/// updating the folder, so the frontend offers the new portable zip instead.
+#[tauri::command]
+pub fn is_portable() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("config.toml").exists()))
+        .unwrap_or(false)
+}
+
 /// Apply the recursive-inbox flag to the live session (if one is open), so the
 /// next rescan walks (or stops walking) subfolders. A no-op `Ok(())` when no
 /// session is open. Persisting the choice is the frontend's job via `set_settings`.
