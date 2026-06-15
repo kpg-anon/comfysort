@@ -8,6 +8,18 @@
   function backdrop(e: MouseEvent) {
     if (e.target === e.currentTarget) settings.close();
   }
+
+  // Empty-trash control: an inline two-step confirm (the action is irreversible).
+  let confirmingEmpty = $state(false);
+  // Drop the half-armed confirm if the panel is dismissed.
+  $effect(() => {
+    if (!settings.open) confirmingEmpty = false;
+  });
+  const trashCount = $derived(session.destinations.find((d) => d.isTrash)?.mediaCount ?? 0);
+  async function emptyTrash() {
+    confirmingEmpty = false;
+    await session.emptyTrash();
+  }
 </script>
 
 {#snippet toggleRow(name: string, desc: string, value: boolean, key: keyof Settings)}
@@ -157,6 +169,27 @@
               <span class="nf">{I.keyboard}</span> Open sort-target editor
             </button>
           </section>
+
+          <section>
+            <h3>Trash</h3>
+            <p class="note">Trashed files and deleted folders live under <code>.comfysort/.trash</code> until you empty it. Emptying is permanent.</p>
+            <div class="trashrow">
+              <span class="trashcount">
+                <span class="nf">{I.trash}</span>
+                {trashCount} media file{trashCount === 1 ? "" : "s"} in trash
+              </span>
+              {#if confirmingEmpty}
+                <div class="confirmrow">
+                  <button class="danger" onclick={emptyTrash}>Permanently empty</button>
+                  <button class="openconf" onclick={() => (confirmingEmpty = false)}>Cancel</button>
+                </div>
+              {:else}
+                <button class="openconf danger-hint" onclick={() => (confirmingEmpty = true)}>
+                  <span class="nf">{I.trash}</span> Empty trash…
+                </button>
+              {/if}
+            </div>
+          </section>
         {/if}
       </div>
 
@@ -257,6 +290,23 @@
   }
   .openconf:hover { border-color: var(--purple); color: var(--text-primary); }
   .openconf .nf { color: var(--cyan); font-size: 12px; }
+
+  /* trash controls */
+  .trashrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .trashcount {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: var(--text-secondary); font-size: 12.5px;
+  }
+  .trashcount .nf { color: var(--red); font-size: 12px; }
+  .confirmrow { display: inline-flex; gap: 6px; flex: none; }
+  .openconf.danger-hint .nf { color: var(--red); }
+  .openconf.danger-hint:hover { border-color: var(--red); color: var(--text-primary); }
+  .danger {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    border: 1px solid var(--red); background: var(--red); color: var(--text-inverse);
+    border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .danger:hover { filter: brightness(1.08); }
 
   /* default-folder picker rows */
   .pathctl { display: flex; align-items: center; gap: 6px; flex: none; max-width: 230px; }

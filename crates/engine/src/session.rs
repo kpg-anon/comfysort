@@ -3,8 +3,8 @@
 
 use crate::destinations::{count_media, count_media_recursive, scan_destinations};
 use crate::domain::{
-    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpKind, OpOutcome,
-    STATE_DIR, SessionView, journal_path, trash_dir,
+    CollisionPolicy, DestinationDto, EmptyTrashResult, FolderEntry, FolderListing, MediaItemDto,
+    OpKind, OpOutcome, RenameResult, STATE_DIR, SessionView, journal_path, trash_dir,
 };
 use crate::logging::log;
 use crate::media::scan_inbox;
@@ -527,8 +527,9 @@ impl Session {
     /// Rename a folder under the output tree in place. Refuses the root, the
     /// state dir, and the trash dir; refuses if the target name already exists.
     /// Updates any in-memory destination + persisted binding pointing at the old
-    /// path, then returns the refreshed listing of the parent directory.
-    pub fn rename_folder(&mut self, path: &Path, new_name: &str) -> anyhow::Result<FolderListing> {
+    /// path, then returns the refreshed listing of the parent directory together
+    /// with the destinations (so a renamed sort target's label updates live).
+    pub fn rename_folder(&mut self, path: &Path, new_name: &str) -> anyhow::Result<RenameResult> {
         let clean = new_name.trim();
         if clean.is_empty() || clean.contains(['/', '\\']) {
             anyhow::bail!("invalid folder name");
@@ -567,7 +568,48 @@ impl Session {
             &self.output,
             &format!("rename: {} -> {}", path.display(), target.display()),
         );
-        self.list_folders(&parent)
+        let listing = self.list_folders(&parent)?;
+        Ok(RenameResult {
+            listing,
+            destinations: self.destinations.clone(),
+        })
+    }
+
+    /// Permanently delete every entry in the session trash directory. Files and
+    /// subfolders alike are removed; the trash destination's count is reset to
+    /// zero. Returns how many top-level entries were removed plus the refreshed
+    /// destination list. This is irreversible — the frontend confirms first.
+    pub fn empty_trash(&mut self) -> anyhow::Result<EmptyTrashResult> {
+        let dir = trash_dir(&self.output);
+        let mut removed = 0usize;
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let result = if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                    std::fs::remove_dir_all(&path)
+                } else {
+                    std::fs::remove_file(&path)
+                };
+                match result {
+                    Ok(()) => removed += 1,
+                    Err(err) => log(
+                        &self.output,
+                        &format!("empty_trash: failed to remove {}: {err}", path.display()),
+                    ),
+                }
+            }
+        }
+        if let Some(dest) = self.destinations.iter_mut().find(|d| d.is_trash) {
+            dest.media_count = 0;
+        }
+        log(
+            &self.output,
+            &format!("empty_trash: removed {removed} entries"),
+        );
+        Ok(EmptyTrashResult {
+            removed,
+            destinations: self.destinations.clone(),
+        })
     }
 
     /// Revert one specific past operation (per-file undo from the history view).
@@ -864,5 +906,32 @@ mod tests {
 
         session.trash_item(&src).unwrap();
         assert_eq!(count_of(&session, &trash), 1);
+    }
+
+    #[test]
+    fn empty_trash_clears_contents_and_resets_count() {
+        let dir = tempdir().unwrap();
+        let input = dir.path().join("inbox");
+        let output = dir.path().join("out");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(&output).unwrap();
+        let a = input.join("a.jpg");
+        let b = input.join("b.jpg");
+        fs::write(&a, b"img").unwrap();
+        fs::write(&b, b"img").unwrap();
+
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let trash = trash_dir(&output);
+        session.trash_item(&a).unwrap();
+        session.trash_item(&b).unwrap();
+        assert_eq!(count_of(&session, &trash), 2);
+        assert!(trash.exists());
+
+        let result = session.empty_trash().unwrap();
+        assert_eq!(result.removed, 2, "both trashed files removed");
+        assert_eq!(count_of(&session, &trash), 0, "trash count reset");
+        // The trash directory itself remains; only its contents are gone.
+        let remaining = fs::read_dir(&trash).map(|e| e.count()).unwrap_or(0);
+        assert_eq!(remaining, 0, "trash directory emptied");
     }
 }

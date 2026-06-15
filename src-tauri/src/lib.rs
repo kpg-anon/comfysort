@@ -33,6 +33,7 @@ pub fn run() {
             commands::bind_folder,
             commands::bind_path,
             commands::rename_folder,
+            commands::empty_trash,
             commands::revert_op,
             commands::unbind_hotkey,
             commands::would_cross_volume,

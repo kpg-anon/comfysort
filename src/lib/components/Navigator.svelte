@@ -92,6 +92,21 @@
     node.focus();
     node.select();
   }
+
+  // Place a fixed popup at the cursor, but clamp it inside the viewport so it
+  // never gets cut off near a screen edge (e.g. right-clicking the last folder).
+  function positionMenu(node: HTMLElement, pos: { x: number; y: number }) {
+    const place = (p: { x: number; y: number }) => {
+      const margin = 6;
+      const { width, height } = node.getBoundingClientRect();
+      const left = Math.max(margin, Math.min(p.x, window.innerWidth - width - margin));
+      const top = Math.max(margin, Math.min(p.y, window.innerHeight - height - margin));
+      node.style.left = `${left}px`;
+      node.style.top = `${top}px`;
+    };
+    place(pos);
+    return { update: place };
+  }
 </script>
 
 <section class="pane" class:focused>
@@ -131,21 +146,37 @@
   <div class="list" bind:this={listEl}>
     {#if session.searching}
       {#each session.searchResults as r, i (r.path)}
-        <div class="row" class:cursor={i === session.searchCursor}>
-          <button class="drill" use:tip={r.path} onclick={() => session.searchDrill(r)}>
+        <div class="row" class:cursor={i === session.searchCursor}
+          oncontextmenu={(e) => session.openNavContext(e, r)}>
+          {#if session.renamingPath === r.path}
             <span class="nf icon">{I.folder}</span>
-            <span class="rname">
-              <span class="name">{r.name}</span>
-              <span class="rel">{relOf(r.path)}</span>
-            </span>
-            <span class="count">({r.mediaCount})</span>
-          </button>
-          <div class="acts">
-            <button class="act move nf" use:tip={"Move here (Enter)"} disabled={!session.current}
-              onclick={() => { session.moveInto(r); searchEl?.focus(); }}>{I.arrowRight}</button>
-            <button class="act copy nf" use:tip={"Copy here (Shift+D)"} disabled={!session.current}
-              onclick={() => { session.copyInto(r); searchEl?.focus(); }}>{I.copy}</button>
-          </div>
+            <input
+              class="rename"
+              value={r.name}
+              use:focusOnMount
+              onkeydown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") { e.preventDefault(); session.commitRename(r, e.currentTarget.value); }
+                else if (e.key === "Escape") { e.preventDefault(); session.cancelRename(); }
+              }}
+              onblur={(e) => { if (session.renamingPath === r.path) session.commitRename(r, e.currentTarget.value); }}
+            />
+          {:else}
+            <button class="drill" use:tip={r.path} onclick={() => session.searchDrill(r)}>
+              <span class="nf icon">{I.folder}</span>
+              <span class="rname">
+                <span class="name">{r.name}</span>
+                <span class="rel">{relOf(r.path)}</span>
+              </span>
+              <span class="count">({r.mediaCount})</span>
+            </button>
+            <div class="acts">
+              <button class="act move nf" use:tip={"Move here (Enter)"} disabled={!session.current}
+                onclick={() => { session.moveInto(r); searchEl?.focus(); }}>{I.arrowRight}</button>
+              <button class="act copy nf" use:tip={"Copy here (Shift+D)"} disabled={!session.current}
+                onclick={() => { session.copyInto(r); searchEl?.focus(); }}>{I.copy}</button>
+            </div>
+          {/if}
         </div>
       {/each}
       {#if session.searchQuery && session.searchResults.length === 0}
@@ -210,7 +241,7 @@
     <div class="ctx-backdrop" role="presentation"
       onclick={() => session.closeNavContext()}
       oncontextmenu={(e) => { e.preventDefault(); session.closeNavContext(); }}></div>
-    <div class="navctx" style="left:{session.navCtx.x}px; top:{session.navCtx.y}px">
+    <div class="navctx" use:positionMenu={{ x: session.navCtx.x, y: session.navCtx.y }}>
       <button onclick={() => session.openFolderExternally(session.navCtx!.folder.path)}>
         <span class="nf">{I.folderOpen}</span> Open in Explorer
       </button>

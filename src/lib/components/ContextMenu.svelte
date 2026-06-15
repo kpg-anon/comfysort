@@ -3,9 +3,21 @@
   import { I } from "$lib/icons";
 
   const ctx = $derived(session.ctx);
-  // Clamp the menu inside the viewport.
-  const left = $derived(ctx ? Math.min(ctx.x, window.innerWidth - 230) : 0);
-  const top = $derived(ctx ? Math.min(ctx.y, window.innerHeight - 200) : 0);
+
+  // Place the menu at the cursor, clamped inside the viewport against the menu's
+  // *measured* size so it never gets cut off near a screen edge.
+  function positionMenu(node: HTMLElement, pos: { x: number; y: number }) {
+    const place = (p: { x: number; y: number }) => {
+      const margin = 6;
+      const { width, height } = node.getBoundingClientRect();
+      const left = Math.max(margin, Math.min(p.x, window.innerWidth - width - margin));
+      const top = Math.max(margin, Math.min(p.y, window.innerHeight - height - margin));
+      node.style.left = `${left}px`;
+      node.style.top = `${top}px`;
+    };
+    place(pos);
+    return { update: place };
+  }
 </script>
 
 {#if ctx}
@@ -16,7 +28,7 @@
     onclick={() => session.closeContext()}
     oncontextmenu={(e) => { e.preventDefault(); session.closeContext(); }}
   ></div>
-  <div class="cm" style="left:{left}px; top:{top}px">
+  <div class="cm" use:positionMenu={{ x: ctx.x, y: ctx.y }}>
     <div class="cm-name" title={ctx.item.path}>{ctx.item.fileName}</div>
     <div class="cm-sep"></div>
     <button class="cmi" onclick={() => session.openInDefault(ctx.item.path)}>

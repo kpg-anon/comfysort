@@ -46,6 +46,13 @@ pub struct Settings {
     pub default_input: String,
     #[serde(default)]
     pub default_output: String,
+    /// The roots of the most recently opened session, recorded on every open so
+    /// the start screen can offer a one-click "restore last session". Empty until
+    /// a session has been opened. The input may be a `;`-joined list of folders.
+    #[serde(default)]
+    pub last_input: String,
+    #[serde(default)]
+    pub last_output: String,
 }
 
 fn default_collision_policy() -> CollisionPolicy {
@@ -84,6 +91,8 @@ impl Default for Settings {
             theme: default_theme(),
             default_input: String::new(),
             default_output: String::new(),
+            last_input: String::new(),
+            last_output: String::new(),
         }
     }
 }
@@ -151,6 +160,8 @@ mod tests {
             theme: "nord".to_owned(),
             default_input: "C:/in".to_owned(),
             default_output: "C:/out".to_owned(),
+            last_input: "C:/last-in".to_owned(),
+            last_output: "C:/last-out".to_owned(),
         };
         save(&path, &settings).unwrap();
         assert!(path.exists(), "config.toml written");

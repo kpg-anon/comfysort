@@ -41,6 +41,16 @@ export interface FolderListing {
   folders: FolderEntry[];
 }
 
+export interface RenameResult {
+  listing: FolderListing;
+  destinations: Destination[];
+}
+
+export interface EmptyTrashResult {
+  removed: number;
+  destinations: Destination[];
+}
+
 export type OpKind = "move" | "copy" | "trash" | "undo";
 
 export interface OpOutcome {
@@ -93,8 +103,10 @@ export const api = {
   bindPath: (path: string, hotkey: string): Promise<Destination[]> =>
     invoke("bind_path", { path, hotkey }),
 
-  renameFolder: (path: string, newName: string): Promise<FolderListing> =>
+  renameFolder: (path: string, newName: string): Promise<RenameResult> =>
     invoke("rename_folder", { path, newName }),
+
+  emptyTrash: (): Promise<EmptyTrashResult> => invoke("empty_trash", {}),
 
   revertOp: (source: string, resolved: string): Promise<OpOutcome> =>
     invoke("revert_op", { source, resolved }),
@@ -142,6 +154,8 @@ export interface Settings {
   theme: string;
   defaultInput: string;
   defaultOutput: string;
+  lastInput: string;
+  lastOutput: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -159,6 +173,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "comfy-dark",
   defaultInput: "",
   defaultOutput: "",
+  lastInput: "",
+  lastOutput: "",
 };
 
 /** The drive/share prefix of a path, for the cross-drive prompt (e.g. "X:"). */

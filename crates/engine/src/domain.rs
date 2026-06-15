@@ -102,6 +102,25 @@ pub struct FolderListing {
     pub folders: Vec<FolderEntry>,
 }
 
+/// The result of a folder rename: the refreshed listing of the parent directory
+/// plus the destinations list, so a rename of a bound folder updates its sort-
+/// target label in the UI immediately (the in-memory destination was relabeled).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameResult {
+    pub listing: FolderListing,
+    pub destinations: Vec<DestinationDto>,
+}
+
+/// The result of emptying the trash: how many top-level entries were removed and
+/// the refreshed destinations (the trash count is reset to zero).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmptyTrashResult {
+    pub removed: usize,
+    pub destinations: Vec<DestinationDto>,
+}
+
 /// The full snapshot returned by `open_session`. The inbox is only sent in full
 /// here; mutating commands return deltas instead.
 #[derive(Debug, Clone, Serialize, Deserialize)]

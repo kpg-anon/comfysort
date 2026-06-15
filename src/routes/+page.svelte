@@ -18,32 +18,72 @@
   import ConfirmModal from "$lib/components/ConfirmModal.svelte";
   import { settings } from "$lib/settings.svelte";
   import { I } from "$lib/icons";
+  import { onMount } from "svelte";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
 
   const open = $derived(session.input !== null && session.output !== null);
+
+  // The window is created hidden (tauri.conf `visible: false`) so the user never
+  // sees the webview's default canvas color flash before our themed background
+  // paints. Reveal it after the first frame has painted our background.
+  onMount(() => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        getCurrentWindow().show().catch(() => {});
+      }),
+    );
+  });
+
+  // True while we're still deciding what to show: settings haven't loaded yet,
+  // or an auto-open into the default folders is in flight. Rendering a neutral
+  // boot screen during this window (instead of the start screen) stops the
+  // start screen from flashing for a frame before auto-open takes over.
+  let autoOpenPending = $state(false);
+  const booting = $derived(!open && (!settings.loaded || autoOpenPending));
 
   // Load persisted settings (config.toml) once at startup so session defaults apply.
   $effect(() => {
     if (!settings.loaded) settings.load();
   });
   // If the user configured default folders, open straight into them (skip the
-  // start screen). Runs once, after settings load.
+  // start screen). Runs once, after settings load. Suppressed when a divergent
+  // last session exists (settings.canRestoreLast): then we show the start
+  // screen — pre-filled with the defaults — so the user can pick up where they
+  // left off or one-click their defaults instead of silently jumping in.
   let autoOpened = false;
   $effect(() => {
     if (settings.loaded && !autoOpened) {
       autoOpened = true;
-      if (!session.input && settings.defaultInput && settings.defaultOutput) {
-        session.open(settings.defaultInput, settings.defaultOutput);
+      if (
+        !session.input &&
+        settings.defaultInput &&
+        settings.defaultOutput &&
+        !settings.canRestoreLast
+      ) {
+        autoOpenPending = true;
+        // Clear the pending flag once the open resolves (success flips `open`
+        // true and renders the app; failure falls back to the start screen).
+        session.open(settings.defaultInput, settings.defaultOutput).finally(() => {
+          autoOpenPending = false;
+        });
       }
     }
   });
-  // Apply the active theme preset to the document (re-themes all tokens).
+  // Apply the active theme preset to the document (re-themes all tokens), and
+  // mirror it to localStorage so the app.html boot script can apply it before
+  // first paint next launch (keeps the boot background matching the theme).
   $effect(() => {
     document.documentElement.dataset.theme = settings.theme;
+    try {
+      localStorage.setItem("comfysort-theme", settings.theme);
+    } catch {
+      // best-effort; a missing localStorage just falls back to the default boot bg
+    }
   });
   // When a confirm prompt opens, drop focus from any text field so its
   // y/a/n keys aren't captured by an input.
   $effect(() => {
-    if (session.crossPrompt || session.deletePrompt)
+    if (session.crossPrompt || session.deletePrompt || session.recursivePrompt)
       (document.activeElement as HTMLElement | null)?.blur();
   });
 
@@ -116,6 +156,17 @@
       const k = e.key.toLowerCase();
       if (k === "y" || e.key === "Enter") session.resolveDelete(true);
       else if (k === "n" || e.key === "Escape") session.resolveDelete(false);
+      return;
+    }
+
+    // --- Modal: recursive-scan choice — Enter takes the default (top level
+    //     only), y includes subfolders, Esc cancels the open entirely. ---
+    if (session.recursivePrompt) {
+      e.preventDefault();
+      const k = e.key.toLowerCase();
+      if (e.key === "Enter") session.resolveRecursive("flat");
+      else if (k === "y") session.resolveRecursive("recursive");
+      else if (e.key === "Escape") session.resolveRecursive("cancel");
       return;
     }
 
@@ -267,7 +318,9 @@
 
 <svelte:window onkeydown={onKey} oncontextmenu={(e) => e.preventDefault()} />
 
-{#if !open}
+{#if booting}
+  <div class="booting"></div>
+{:else if !open}
   <StartScreen />
 {:else}
   <div class="app">
@@ -286,15 +339,15 @@
 
   {#if session.crossPrompt}
     <ConfirmModal
-      accent="orange"
+      accent="purple"
       icon={I.warn}
       title="Cross-drive move"
       subtitle="Copies across drives, then removes the source — slower than a same-drive move."
-      buttons={[
-        { key: "y", label: "Move once", kind: "primary", action: () => session.resolveCross("once") },
-        { key: "a", label: "Always this session", kind: "accent", action: () => session.resolveCross("always") },
-        { key: "n", label: "Cancel", kind: "ghost", action: () => session.resolveCross("cancel") },
+      choices={[
+        { icon: I.imageMove, title: "Move once", desc: "Do this cross-drive move now.", recommended: true, key: "y", action: () => session.resolveCross("once") },
+        { icon: I.pinOutline, title: "Always this session", desc: "Stop asking until you relaunch.", key: "a", action: () => session.resolveCross("always") },
       ]}
+      cancel={{ key: "esc", label: "Cancel", action: () => session.resolveCross("cancel") }}
     >
       Move <b>{session.crossPrompt.count}
       {session.crossPrompt.count === 1 ? "file" : "files"}</b> from
@@ -309,16 +362,35 @@
       icon={I.trash}
       title="Delete folder"
       subtitle="Moves the folder into the session trash — reversible with Ctrl+U or the action history."
-      buttons={[
-        { key: "y", label: "Delete to trash", kind: "primary", action: () => session.resolveDelete(true) },
-        { key: "n", label: "Cancel", kind: "ghost", action: () => session.resolveDelete(false) },
+      choices={[
+        { icon: I.deleteForever, title: "Delete to trash", desc: "Move the folder into the session trash. Reversible with Ctrl+U.", recommended: true, key: "y", action: () => session.resolveDelete(true) },
+        { icon: I.folderLock, title: "Keep folder", desc: "Leave the folder where it is.", accent: "purple", key: "n", action: () => session.resolveDelete(false) },
       ]}
+      cancel={{ key: "esc", label: "Cancel", action: () => session.resolveDelete(false) }}
     >
       Move <b>"{session.deletePrompt.name}"</b>
       {#if session.deletePrompt.contents}
         — holding <b style="color: var(--yellow)">{session.deletePrompt.contents}</b> —
       {/if}
       to trash?
+    </ConfirmModal>
+  {/if}
+
+  {#if session.recursivePrompt}
+    <ConfirmModal
+      accent="purple"
+      icon={I.inbox}
+      title="Scan subfolders?"
+      subtitle="Recursive scan walks every nested folder and merges their media into the queue."
+      choices={[
+        { icon: I.folderSolid, title: "Top level only", desc: `Scan only the contents of ${session.recursivePrompt.folderName}.`, recommended: true, action: () => session.resolveRecursive("flat") },
+        { icon: I.folderTree, title: "Include subfolders", desc: "Scan all nested folders recursively.", action: () => session.resolveRecursive("recursive") },
+      ]}
+      cancel={{ key: "esc", label: "Cancel", action: () => session.resolveRecursive("cancel") }}
+    >
+      {session.recursivePrompt.mode === "add" ? "Add" : "Open"}
+      <b>{session.recursivePrompt.folderName}</b> — scan subfolders too, or just
+      the top level?
     </ConfirmModal>
   {/if}
 
@@ -332,6 +404,14 @@
 <Tooltip />
 
 <style>
+  /* Neutral boot screen shown while settings load / an auto-open is in flight,
+     so the start screen never flashes before the app takes over. Flat --bg-app
+     (the same color the loaded app's body shows) so booting → app is one
+     continuous background with no color shift. */
+  .booting {
+    height: 100vh;
+    background: var(--bg-app);
+  }
   .app {
     height: 100vh;
     display: grid;

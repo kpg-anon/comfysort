@@ -1,14 +1,25 @@
 <script lang="ts">
-  // Shared themed confirmation modal (cross-drive move, folder delete, …).
-  // Presentational: the caller owns the state and supplies the body snippet
-  // plus a button row; keyboard handling stays in +page.svelte's dispatcher.
+  // Shared themed confirmation modal (cross-drive move, folder delete, recursion).
+  // Interaction pattern: split choice cards. Each option is a large clickable
+  // card (icon + title + description); the recommended one carries an accent
+  // border + check badge and is the keyboard default. A quiet Cancel link sits
+  // below. Presentational — the caller owns state; keyboard handling stays in
+  // +page.svelte's dispatcher.
   import type { Snippet } from "svelte";
+  import { I } from "$lib/icons";
 
-  type Btn = {
-    key: string;
-    label: string;
-    /** primary = solid accent · accent = outlined accent text · ghost = muted */
-    kind?: "primary" | "accent" | "ghost";
+  /** One choice card. The recommended card is the keyboard default (Enter/y). */
+  type Choice = {
+    icon: string;
+    title: string;
+    desc: string;
+    /** Accent border + check badge; this is the highlighted default. */
+    recommended?: boolean;
+    /** Per-card highlight color, overriding the modal accent — e.g. a "keep"
+     *  card in a destructive dialog should hover purple, not red. */
+    accent?: "orange" | "red" | "green" | "purple" | "cyan";
+    /** Shortcut key shown in the card corner (also wired in +page.svelte). */
+    key?: string;
     action: () => void;
   };
 
@@ -17,22 +28,24 @@
     icon,
     title,
     subtitle,
-    buttons,
+    choices,
+    cancel,
     children,
   }: {
-    /** Theme color var name driving the header icon, top bar, and primary button. */
+    /** Theme color var name driving the header glyph + recommended card. */
     accent?: "orange" | "red" | "green" | "purple" | "cyan";
     icon: string;
     title: string;
     subtitle: string;
-    buttons: Btn[];
+    choices: Choice[];
+    /** The quiet dismiss link below the cards. */
+    cancel?: { key: string; label: string; action: () => void };
     children: Snippet;
   } = $props();
 </script>
 
 <div class="scrim">
   <div class="modal" style="--accent: var(--{accent})">
-    <div class="glow" aria-hidden="true"></div>
     <div class="mhead">
       <span class="micon nf">{icon}</span>
       <div class="mheadtext">
@@ -41,106 +54,125 @@
       </div>
     </div>
     <div class="mbody">{@render children()}</div>
-    <div class="mrow">
-      {#each buttons as b (b.key)}
-        <button class="mbtn {b.kind ?? 'ghost'}" onclick={b.action}>
-          <kbd>{b.key}</kbd>
-          {b.label}
+    <div class="choices" style="grid-template-columns: repeat({choices.length}, 1fr)">
+      {#each choices as c (c.title)}
+        <button
+          class="choice"
+          class:recommended={c.recommended}
+          style={c.accent ? `--card-accent: var(--${c.accent})` : undefined}
+          onclick={c.action}
+        >
+          {#if c.recommended}<span class="check nf">{I.check}</span>{/if}
+          <span class="cicon nf">{c.icon}</span>
+          <span class="ctitle">{c.title}</span>
+          <span class="cdesc">{c.desc}</span>
         </button>
       {/each}
     </div>
+    {#if cancel}
+      <button class="mcancel" onclick={cancel.action}>{cancel.label}</button>
+    {/if}
   </div>
 </div>
 
 <style>
+  /* Flat scrim matching the Settings overlay — no blur, just a dim. */
   .scrim {
     position: fixed;
     inset: 0;
-    background: rgba(8, 10, 13, 0.58);
-    backdrop-filter: blur(3px);
+    background: rgba(8, 10, 13, 0.62);
     display: grid;
     place-items: center;
     z-index: 50;
-    animation: mfade 0.14s ease-out;
+    animation: mfade 0.12s ease-out;
   }
+  /* Flat panel: same surface, border, and radius language as every other pane.
+     No accent glow, no gradient — the accent only colors the header glyph and
+     tints the primary action. */
   .modal {
-    position: relative;
-    width: 480px;
+    width: 420px;
     background: var(--bg-panel);
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-    border-radius: 14px;
-    padding: 20px 22px 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
     box-shadow:
-      0 28px 80px rgba(0, 0, 0, 0.6),
-      0 0 44px color-mix(in srgb, var(--accent) 14%, transparent);
-    overflow: hidden;
-    animation: mpop 0.16s cubic-bezier(0.2, 1.1, 0.4, 1);
-  }
-  /* soft accent wash behind the header so the modal reads as a warning at a
-     glance without a hard colored bar */
-  .glow {
-    position: absolute;
-    inset: -1px -1px auto;
-    height: 86px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--accent) 13%, transparent),
-      transparent
-    );
-    border-top: 2px solid var(--accent);
-    pointer-events: none;
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 12px 32px rgba(0, 0, 0, 0.36);
+    animation: mpop 0.13s ease-out;
   }
   @keyframes mfade { from { opacity: 0; } }
-  @keyframes mpop { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
-  .mhead { position: relative; display: flex; gap: 13px; align-items: flex-start; margin-bottom: 14px; }
+  @keyframes mpop { from { opacity: 0; transform: translateY(6px) scale(0.99); } }
+
+  .mhead { display: flex; gap: 11px; align-items: center; margin-bottom: 12px; }
+  /* Flat accent chip — same shape as the pane header buttons, faint accent
+     border to tie in the accent color without a glow. */
   .micon {
-    flex: none; width: 38px; height: 38px; border-radius: 11px;
-    display: grid; place-items: center; font-size: 17px;
+    flex: none; width: 30px; height: 30px; border-radius: var(--radius-sm);
+    display: grid; place-items: center; font-size: 14px;
     color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 22%, transparent);
-  }
-  .mtitle { color: var(--text-primary); font-weight: 700; font-size: 14.5px; }
-  .msub { color: var(--text-muted); font-size: 11.5px; margin-top: 2px; line-height: 1.45; }
-  .mbody { position: relative; color: var(--text-secondary); font-size: 13px; margin: 0 0 16px; line-height: 1.55; }
-  .mbody :global(b) { color: var(--text-primary); }
-  .mrow { display: flex; gap: 8px; }
-  .mbtn {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 9px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
     background: var(--bg-chip);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 12px;
-    transition: border-color 0.1s, color 0.1s, filter 0.1s;
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
   }
-  .mbtn:hover { border-color: var(--text-muted); color: var(--text-primary); }
-  .mbtn.primary {
-    background: var(--accent); color: var(--text-inverse);
-    border-color: var(--accent); font-weight: 600;
-  }
-  .mbtn.primary:hover { filter: brightness(1.08); border-color: var(--accent); }
-  .mbtn.accent { color: var(--accent); }
-  .mbtn.accent:hover { border-color: var(--accent); }
-  .mbtn.ghost { color: var(--text-muted); }
-  .mbtn kbd {
-    font-family: var(--mono);
-    background: var(--bg-app);
+  .mtitle { color: var(--text-primary); font-weight: 600; font-size: 14px; }
+  .msub { color: var(--text-muted); font-size: 11px; margin-top: 1px; line-height: 1.45; }
+  .mbody { color: var(--text-secondary); font-size: 12.5px; margin: 0 0 14px; line-height: 1.5; text-align: center; }
+  .mbody :global(b) { color: var(--text-primary); }
+
+  /* Split choice cards — centered content with a large icon, mirroring the
+     reference. */
+  .choices { display: grid; gap: 9px; }
+  .choice {
+    /* Per-card highlight color; defaults to the modal accent, overridable via an
+       inline --card-accent (e.g. a "keep" card hovers purple in a red dialog). */
+    --card-accent: var(--accent);
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 20px 14px 16px;
     border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0 5px;
-    font-size: 11px;
+    border-radius: var(--radius);
+    background: var(--bg-chip);
+    cursor: pointer; text-align: center;
+    transition: border-color 0.12s, background 0.12s, transform 0.07s ease;
   }
-  .mbtn.primary kbd {
-    background: rgba(0, 0, 0, 0.2);
-    border-color: rgba(0, 0, 0, 0.24);
-    color: var(--text-inverse);
+  /* Colored highlight on hover — accent border + faint accent wash + accent icon. */
+  .choice:hover {
+    border-color: var(--card-accent);
+    background: color-mix(in srgb, var(--card-accent) 8%, var(--bg-chip));
   }
+  /* Tactile press response. */
+  .choice:active { transform: scale(0.95); }
+  /* Recommended (default) card: accent border + faint accent tint + check badge. */
+  .choice.recommended {
+    border-color: var(--card-accent);
+    background: color-mix(in srgb, var(--card-accent) 12%, var(--bg-chip));
+  }
+  .choice.recommended:hover { background: color-mix(in srgb, var(--card-accent) 18%, var(--bg-chip)); }
+  .cicon { font-size: 42px; line-height: 1; color: var(--text-muted); margin-bottom: 9px; }
+  .choice:hover .cicon { color: var(--card-accent); }
+  .choice.recommended .cicon { color: var(--card-accent); }
+  .ctitle { color: var(--text-primary); font-size: 13px; font-weight: 600; }
+  .cdesc { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+  /* Selected badge (filled accent circle, white check) — mirrors the reference. */
+  .check {
+    position: absolute; top: 9px; right: 9px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 9px;
+    background: var(--card-accent); color: var(--text-inverse);
+  }
+  /* Dismiss button below the cards — a flat chip in the same language as the
+     rest of the interface (border + bg-chip), full width under the cards. */
+  .mcancel {
+    display: block; width: 100%; margin-top: 10px; padding: 8px;
+    background: var(--bg-chip); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--text-secondary); font-size: 12px;
+    transition: border-color 0.12s, color 0.12s, background 0.12s, transform 0.07s ease;
+  }
+  /* Red highlight on hover — the cancel/dismiss reads as the "back out" action. */
+  .mcancel:hover {
+    border-color: var(--red);
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--red) 8%, var(--bg-chip));
+  }
+  .mcancel:active { transform: scale(0.96); }
 </style>

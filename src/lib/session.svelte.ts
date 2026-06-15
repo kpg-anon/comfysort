@@ -39,6 +39,16 @@ export interface DeletePrompt {
   run: () => Promise<void>;
 }
 
+/** A newly-picked inbox folder awaiting a recursive-vs-top-level choice. */
+export interface RecursivePrompt {
+  /** Display name of the folder being added/changed. */
+  folderName: string;
+  /** Whether this replaces the inbox ("change") or adds to it ("add"). */
+  mode: "change" | "add";
+  /** Open with the chosen recursion (true = walk subfolders). */
+  run: (recursive: boolean) => Promise<void>;
+}
+
 /** Hotkey slots that can be bound (mirrors the TUI's `is_bindable_hotkey`). */
 export const BINDABLE = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "="];
 
@@ -112,6 +122,8 @@ class SessionStore {
   crossPrompt = $state<CrossPrompt | null>(null);
   // Folder-delete confirmation (themed modal, not the browser confirm box).
   deletePrompt = $state<DeletePrompt | null>(null);
+  // Recursive-scan choice for a newly-picked inbox folder.
+  recursivePrompt = $state<RecursivePrompt | null>(null);
 
   // Inline new-folder prompt, driven by the + button or Ctrl+N.
   creatingFolder = $state(false);
@@ -279,11 +291,11 @@ class SessionStore {
 
   // ---- Session lifecycle ---------------------------------------------------
 
-  async open(input: string, output: string) {
+  async open(input: string, output: string, recursive = settings.recursiveInbox) {
     this.busy = true;
     this.error = null;
     try {
-      const view = await api.openSession(input, output, settings.recursiveInbox);
+      const view = await api.openSession(input, output, recursive);
       this.input = view.input;
       this.output = view.output;
       this.allItems = view.inbox;
@@ -300,6 +312,8 @@ class SessionStore {
       this.creatingFolder = false;
       await this.loadFolders(view.output);
       this.fetchDisk(true);
+      // Remember these roots so the start screen can offer to restore them.
+      void settings.recordLastSession(view.input, view.output);
       this.setStatus(`${view.inbox.length} items to sort`, "info");
     } catch (e) {
       // Shown on the start screen, and as a status if we're already in a session
@@ -312,7 +326,14 @@ class SessionStore {
   }
   async changeInput() {
     const dir = await api.pickDirectory("Choose the inbox folder to sort");
-    if (dir && this.output) await this.open(dir, this.output);
+    if (!dir || !this.output) return;
+    const output = this.output;
+    this.recursivePrompt = {
+      folderName: baseName(dir),
+      mode: "change",
+      run: (recursive) => this.open(dir, output, recursive),
+    };
+    this.setStatus("Choose how to scan the folder", "info");
   }
   /** Add another inbox folder to the live session. Inputs are `;`-joined and
    *  re-scanned together; the launch flow stays single-folder. */
@@ -324,8 +345,25 @@ class SessionStore {
       this.setStatus("That folder is already in the inbox", "info");
       return;
     }
-    await this.open([...parts, dir].join(";"), this.output);
-    this.setStatus(`Added ${baseName(dir)} — ${parts.length + 1} inbox folders`, "good");
+    const output = this.output;
+    const joined = [...parts, dir].join(";");
+    this.recursivePrompt = {
+      folderName: baseName(dir),
+      mode: "add",
+      run: async (recursive) => {
+        await this.open(joined, output, recursive);
+        this.setStatus(`Added ${baseName(dir)} — ${parts.length + 1} inbox folders`, "good");
+      },
+    };
+    this.setStatus("Choose how to scan the folder", "info");
+  }
+
+  /** Resolve the recursive-scan prompt: open with the chosen depth, or cancel. */
+  async resolveRecursive(choice: "recursive" | "flat" | "cancel") {
+    const prompt = this.recursivePrompt;
+    this.recursivePrompt = null;
+    if (choice === "cancel" || !prompt) return;
+    await prompt.run(choice === "recursive");
   }
   async changeOutput() {
     const dir = await api.pickDirectory("Choose the destination root");
@@ -483,9 +521,16 @@ class SessionStore {
     e.preventDefault();
     this.focusNavigator();
     // Make the right-clicked folder the active selection (mirrors the inbox).
-    const folders = this.nav?.folders ?? [];
-    const idx = folders.findIndex((f) => f.path === folder.path);
-    if (idx >= 0) this.navCursor = (this.navHasParent ? 1 : 0) + idx;
+    // In search mode the rows are search results, so move the search cursor;
+    // otherwise resolve the row index within the browsed tree.
+    if (this.searching) {
+      const i = this.searchResults.findIndex((f) => f.path === folder.path);
+      if (i >= 0) this.searchCursor = i;
+    } else {
+      const folders = this.nav?.folders ?? [];
+      const idx = folders.findIndex((f) => f.path === folder.path);
+      if (idx >= 0) this.navCursor = (this.navHasParent ? 1 : 0) + idx;
+    }
     this.navCtx = { x: e.clientX, y: e.clientY, folder };
   }
   closeNavContext() {
@@ -512,8 +557,32 @@ class SessionStore {
     const clean = name.trim();
     if (!clean || clean === folder.name) return;
     try {
-      this.nav = await api.renameFolder(folder.path, clean);
+      const res = await api.renameFolder(folder.path, clean);
+      this.nav = res.listing;
+      // A bound folder's sort-target label is relabeled in the backend; adopt
+      // the refreshed destinations so the Sort Targets pane updates immediately.
+      this.destinations = res.destinations;
+      // In search mode the tree isn't shown — re-run the search so the result
+      // row reflects the new name.
+      if (this.searching) this.refreshSearchCounts();
       this.setStatus(`Renamed to ${clean}`, "good");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+
+  /** Permanently empty the session trash. Irreversible — the Settings panel
+   *  confirms before calling this. Updates the trash count from the result. */
+  async emptyTrash() {
+    try {
+      const res = await api.emptyTrash();
+      this.destinations = res.destinations;
+      this.setStatus(
+        res.removed === 0
+          ? "Trash is already empty"
+          : `Emptied trash — removed ${res.removed} item${res.removed === 1 ? "" : "s"}`,
+        "good",
+      );
     } catch (e) {
       this.setStatus(String(e), "bad");
     }

@@ -3,8 +3,8 @@
 //! `anyhow` errors to strings the frontend can display.
 
 use comfysort_engine::domain::{
-    CollisionPolicy, DestinationDto, FolderEntry, FolderListing, MediaItemDto, OpOutcome,
-    SessionView,
+    CollisionPolicy, DestinationDto, EmptyTrashResult, FolderEntry, FolderListing, MediaItemDto,
+    OpOutcome, RenameResult, SessionView,
 };
 use comfysort_engine::session::Session;
 use comfysort_engine::settings::{self, Settings};
@@ -230,14 +230,22 @@ pub async fn bind_path(
     with_session(&state, |s| s.bind_path(&PathBuf::from(&path), key))
 }
 
-/// Rename a folder in place; returns the refreshed listing of its parent.
+/// Rename a folder in place; returns the refreshed listing of its parent plus
+/// the destinations (so a renamed sort target relabels immediately).
 #[tauri::command]
 pub async fn rename_folder(
     state: State<'_, AppState>,
     path: String,
     new_name: String,
-) -> CmdResult<FolderListing> {
+) -> CmdResult<RenameResult> {
     with_session(&state, |s| s.rename_folder(&PathBuf::from(&path), &new_name))
+}
+
+/// Permanently empty the session trash. Returns the count removed plus the
+/// refreshed destinations (trash count reset to zero).
+#[tauri::command]
+pub async fn empty_trash(state: State<'_, AppState>) -> CmdResult<EmptyTrashResult> {
+    with_session(&state, |s| s.empty_trash())
 }
 
 /// Revert one specific past operation (per-file undo from the history view).

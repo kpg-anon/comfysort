@@ -4,7 +4,30 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tauri + SvelteKit + Typescript App</title>
+    <title>comfysort</title>
+    <!-- Pre-CSS boot background. theme.css isn't applied on the webview's first
+         paint, so without this the window flashes white. The inline script below
+         applies the persisted theme to <html> *before* first paint, and these
+         rules set the matching flat --bg-app per theme so the boot color equals
+         the loaded app's background exactly — no mid-startup color shift.
+         Hardcoded (no design token is available this early); keep in sync with
+         each theme's --bg-app in src/lib/theme.css. -->
+    <style>
+      html { margin: 0; color-scheme: dark; background: #111418; } /* comfy-dark */
+      html[data-theme="nord"] { background: #2e3440; }
+      html[data-theme="gruvbox"] { background: #1d2021; }
+      html[data-theme="catppuccin"] { background: #1e1e2e; }
+      body { margin: 0; background: transparent; }
+    </style>
+    <script>
+      // Apply the saved theme synchronously, before first paint, so the boot
+      // background matches the loaded interface (mirrors settings.theme, written
+      // to localStorage whenever the theme is applied).
+      try {
+        var t = localStorage.getItem("comfysort-theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

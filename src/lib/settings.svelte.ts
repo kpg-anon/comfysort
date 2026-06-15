@@ -19,6 +19,8 @@ class SettingsStore {
   theme = $state(DEFAULT_SETTINGS.theme);
   defaultInput = $state(DEFAULT_SETTINGS.defaultInput);
   defaultOutput = $state(DEFAULT_SETTINGS.defaultOutput);
+  lastInput = $state(DEFAULT_SETTINGS.lastInput);
+  lastOutput = $state(DEFAULT_SETTINGS.lastOutput);
 
   /** Overlay visibility. */
   open = $state(false);
@@ -42,6 +44,8 @@ class SettingsStore {
       theme: this.theme,
       defaultInput: this.defaultInput,
       defaultOutput: this.defaultOutput,
+      lastInput: this.lastInput,
+      lastOutput: this.lastOutput,
     };
   }
   private apply(s: Settings) {
@@ -59,6 +63,8 @@ class SettingsStore {
     this.theme = s.theme;
     this.defaultInput = s.defaultInput;
     this.defaultOutput = s.defaultOutput;
+    this.lastInput = s.lastInput;
+    this.lastOutput = s.lastOutput;
   }
 
   /** Load config.toml once at startup. */
@@ -84,6 +90,27 @@ class SettingsStore {
     } catch {
       // best-effort persistence
     }
+  }
+
+  /** Record the roots of the just-opened session so the start screen can offer
+   *  to restore it next launch. Persisted to config.toml (best-effort). */
+  async recordLastSession(input: string, output: string) {
+    if (this.lastInput === input && this.lastOutput === output) return;
+    this.lastInput = input;
+    this.lastOutput = output;
+    try {
+      await api.setSettings(this.snapshot());
+    } catch {
+      // best-effort persistence
+    }
+  }
+
+  /** Whether the start screen should offer a "restore last session" shortcut:
+   *  a last session exists and its roots differ from the configured defaults
+   *  (when they match the defaults, the app already auto-opens into them). */
+  get canRestoreLast(): boolean {
+    if (!this.lastInput || !this.lastOutput) return false;
+    return this.lastInput !== this.defaultInput || this.lastOutput !== this.defaultOutput;
   }
 
   /** Pick a default inbox/destination folder and persist it. */

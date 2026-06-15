@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-14
+
+### Added
+- **Restore last session.** The start screen offers a one-click **Restore last session** whenever your last inbox/destination differ from your configured defaults; the roots are remembered in `config.toml`.
+- **Recursive-scan prompt** when adding or changing an inbox folder — choose *Top level only* or *Include subfolders* each time, instead of relying solely on the global setting.
+- **Empty trash** from Settings — a new **Trash** section shows the session trash count and permanently clears it (with an inline confirm).
+- **Right-click context menu on folder search results** — open / rename / delete now work on fuzzy-search matches in the Navigator, not just the browsed tree.
+
+### Changed
+- **Redesigned confirmation dialogs.** The cross-drive, folder-delete, and recursive-scan prompts now use a flat **split choice cards** layout — a large icon, title, and description per option, the default highlighted, and a clear Cancel button. The glow, gradient, and backdrop blur are gone, matching the rest of the interface.
+- **Renaming a bound folder updates its sort-target label immediately** instead of waiting for the next session.
+- **Flatter, more cohesive look** — the start screen and app backgrounds are a single flat theme color (gradients removed), with retuned card shadows.
+
+### Fixed
+- **No more startup flash.** The window now opens already painted in your theme's background — the brief white / grey (`#121212`) flash before the UI loaded is gone, with the theme applied before the first frame.
+- **Context menus no longer get cut off near a screen edge** (e.g. the last folder in the Navigator, or when the window is maximized on a large monitor) — popups now clamp to the viewport on both axes.
+
 ## [0.4.7] — 2026-06-10
 
 ### Fixed

@@ -24,10 +24,9 @@ vite.config.ts.timestamp-*
 
 # Local-only docs (internal architecture / design / handoff notes + context for
 # cross-session iteration) and local dev tooling. Kept out of the public repo;
-# README.md (public) lives at the root.
-# Exception: docs/screenshots/ holds the README hero + screenshots (published).
-/docs/*
-!/docs/screenshots/
+# README.md (public) lives at the root, and the published hero + screenshots it
+# references live in /screenshots/ at the repo root.
+/docs/
 /.claude/
 
 # Contributor entry notes (local-only)

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/screenshots/hero.webp" alt="comfysort mascot" width="170">
+<img src="screenshots/hero.webp" alt="comfysort mascot" width="170">
 
 <h1><samp>comfysort</samp></h1>
 
@@ -10,7 +10,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.4.7-c287ff?style=for-the-badge" alt="Version 0.4.7">
+  <img src="https://img.shields.io/badge/version-0.5.0-c287ff?style=for-the-badge" alt="Version 0.5.0">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-engine-CE412B?style=for-the-badge&logo=rust&logoColor=white" alt="Rust engine">
@@ -24,6 +24,9 @@
 </div>
 
 https://github.com/user-attachments/assets/edd501ad-748d-4aa1-8101-778ac1b5e1d1
+
+> [!NOTE]
+> **v0.5.0.** New this release: **restore your last session** from the start screen, a **recursive-scan prompt** when you add or change an inbox folder, an **empty-trash** control in Settings, right-click actions on folder **search results**, completely **redesigned confirmation dialogs** (split choice cards), and a **flash-free, flat-themed startup**.
 
 ---
 
@@ -43,15 +46,15 @@ Pick an **inbox** and a **destination root**, preview the current file, press <k
 ## 🖥️ Screenshots
 
 <div align="center">
-  <img src="docs/screenshots/main.png" alt="The three-column workstation: inbox queue, native preview, file info / sort targets / navigator" width="860">
+  <img src="screenshots/main.png" alt="The three-column workstation: inbox queue, native preview, file info / sort targets / navigator" width="860">
   <br><sub>The three-column workstation — inbox queue · native preview · file info, hotkey sort targets & navigator</sub>
 </div>
 
 | | |
 |:--:|:--:|
-| <img src="docs/screenshots/navigator.png" alt="Navigator fuzzy search"> | <img src="docs/screenshots/history.png" alt="Action history with per-file revert"> |
+| <img src="screenshots/navigator.png" alt="Navigator fuzzy search"> | <img src="screenshots/history.png" alt="Action history with per-file revert"> |
 | <sub>Navigator — type to fuzzy-find any folder, <kbd>Enter</kbd> moves into it</sub> | <sub>Action history — every operation journaled, revert any single file</sub> |
-| <img src="docs/screenshots/settings.png" alt="Settings with theme presets"> | <img src="docs/screenshots/editor.png" alt="Sort-target editor"> |
+| <img src="screenshots/settings.png" alt="Settings with theme presets"> | <img src="screenshots/editor.png" alt="Sort-target editor"> |
 | <sub>Settings — themes, collision policy, confirms, defaults (config.toml)</sub> | <sub>Sort-target editor — bind any folder to keys <kbd>1</kbd>–<kbd>9</kbd>, <kbd>=</kbd>, <kbd>−</kbd></sub> |
 
 ## ⬇️ Download
