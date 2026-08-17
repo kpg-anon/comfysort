@@ -68,8 +68,12 @@ export const api = {
   pickDirectory: (title?: string): Promise<string | null> =>
     invoke("pick_directory", { title }),
 
-  openSession: (input: string, output: string, recursive: boolean): Promise<SessionView> =>
-    invoke("open_session", { input, output, recursive }),
+  openSession: (
+    input: string,
+    output: string,
+    recursive: boolean,
+    ignored: string[],
+  ): Promise<SessionView> => invoke("open_session", { input, output, recursive, ignored }),
 
   moveItem: (source: string, destDir: string): Promise<OpOutcome> =>
     invoke("move_item", { source, destDir }),
@@ -129,6 +133,10 @@ export const api = {
     invoke("set_collision_policy", { policy }),
   setRecursiveInbox: (recursive: boolean): Promise<void> =>
     invoke("set_recursive_inbox", { recursive }),
+  /** Push the ignore list onto the live session. Resolves to the refreshed
+   *  destinations, or null when no session is open. */
+  setIgnoredFolders: (ignored: string[]): Promise<Destination[] | null> =>
+    invoke("set_ignored_folders", { ignored }),
   isPortable: (): Promise<boolean> => invoke("is_portable", {}),
 };
 
@@ -151,6 +159,10 @@ export interface Settings {
   videoMuted: boolean;
   autoUpdateCheck: boolean;
   recursiveInbox: boolean;
+  /** Folders hidden from the Navigator, folder search, sort-target scan and
+   *  media counts. Each entry is an absolute path (that folder and its subtree)
+   *  or a bare folder name (matched at any depth, case-insensitively). */
+  ignoredFolders: string[];
   theme: string;
   defaultInput: string;
   defaultOutput: string;
@@ -170,6 +182,7 @@ export const DEFAULT_SETTINGS: Settings = {
   videoMuted: true,
   autoUpdateCheck: true,
   recursiveInbox: false,
+  ignoredFolders: [],
   theme: "comfy-dark",
   defaultInput: "",
   defaultOutput: "",

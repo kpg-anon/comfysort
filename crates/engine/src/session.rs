@@ -6,6 +6,7 @@ use crate::domain::{
     CollisionPolicy, DestinationDto, EmptyTrashResult, FolderEntry, FolderListing, MediaItemDto,
     OpKind, OpOutcome, RenameResult, STATE_DIR, SessionView, journal_path, trash_dir,
 };
+use crate::ignore::IgnoreSet;
 use crate::logging::log;
 use crate::media::scan_inbox;
 use crate::operations::{CompletedOp, OperationEngine, OperationKind};
@@ -47,18 +48,25 @@ pub struct Session {
     collision_policy: CollisionPolicy,
     /// Walk inbox subfolders too (Settings "Recursive inbox scan").
     recursive_inbox: bool,
+    /// Folders hidden from the Navigator, folder search, the sort-target scan,
+    /// and recursive media counts (Settings "Ignored folders"). Applies to the
+    /// output tree only — the inbox scan is a different root and is unaffected.
+    ignores: IgnoreSet,
 }
 
 impl Session {
     /// Open a session against the given roots, scanning inbox + destinations.
     /// `recursive` walks every inbox subfolder instead of just the top level.
+    /// `ignored` is the raw `ignoredFolders` config list (see [`IgnoreSet`]).
     pub fn open(
         input: String,
         output: PathBuf,
         recursive: bool,
+        ignored: &[String],
     ) -> anyhow::Result<(Self, SessionView)> {
+        let ignores = IgnoreSet::new(ignored);
         let inbox = scan_inputs(&input, recursive)?;
-        let mut destinations = scan_destinations(&output)?;
+        let mut destinations = scan_destinations(&output, &ignores)?;
         let engine = OperationEngine::new(journal_path(&output));
 
         // Restore user-bound hotkeys persisted from prior sessions. Applied on
@@ -149,6 +157,7 @@ impl Session {
             user_bindings,
             collision_policy: CollisionPolicy::Rename,
             recursive_inbox: recursive,
+            ignores,
         };
         Ok((session, view))
     }
@@ -165,6 +174,57 @@ impl Session {
         self.recursive_inbox = recursive;
     }
 
+    /// Replace the ignore rules on the live session (the Navigator's "Ignore
+    /// this folder" and the Settings list both land here) and return the
+    /// refreshed destination list.
+    ///
+    /// Top-level destinations are re-scanned under the new rules so un-ignoring
+    /// a folder brings it straight back. A bare re-scan would drop what the
+    /// scanner never produces, so two things are carried over from the previous
+    /// list: hotkeys (only re-applied from `bindings.json` on open), and bound
+    /// folders that aren't top-level children of the output root (nested binds
+    /// and the managed `=` archive). A hotkey bind is an explicit choice, so a
+    /// bound folder stays a sort target even once it is ignored — it just stops
+    /// appearing in the Navigator.
+    pub fn set_ignored_folders(&mut self, entries: &[String]) -> Vec<DestinationDto> {
+        self.ignores = IgnoreSet::new(entries);
+        let previous = std::mem::take(&mut self.destinations);
+        let mut scanned = match scan_destinations(&self.output, &self.ignores) {
+            Ok(scanned) => scanned,
+            Err(err) => {
+                // An unreadable output root: keep what we had rather than
+                // blanking the user's sort targets.
+                log(&self.output, &format!("set_ignored_folders rescan failed: {err}"));
+                self.destinations = previous;
+                return self.destinations.clone();
+            }
+        };
+        for old in previous {
+            match scanned.iter_mut().find(|d| Path::new(&d.path) == Path::new(&old.path)) {
+                Some(existing) => {
+                    if old.hotkey.is_some() {
+                        existing.hotkey = old.hotkey;
+                    }
+                }
+                None => {
+                    if old.hotkey.is_some() && !old.is_trash {
+                        scanned.push(old);
+                    }
+                }
+            }
+        }
+        self.destinations = scanned;
+        log(
+            &self.output,
+            &format!(
+                "ignored folders: {} rule(s), {} destinations",
+                entries.iter().filter(|e| !e.trim().is_empty()).count(),
+                self.destinations.len()
+            ),
+        );
+        self.destinations.clone()
+    }
+
     /// Re-scan the input directory (e.g. after external changes) and return the
     /// fresh inbox. Destinations are left as-is; call after a manual refresh.
     pub fn rescan_inbox(&self) -> anyhow::Result<Vec<MediaItemDto>> {
@@ -173,7 +233,8 @@ impl Session {
 
     /// List the immediate child folders of `dir` for the Navigator. `dir` is
     /// clamped to the output-root subtree so the Navigator can never escape it.
-    /// Folders are sorted by media count desc, then name; `.comfysort` is hidden.
+    /// Folders are sorted by media count desc, then name; `.comfysort` and every
+    /// ignored folder are hidden.
     pub fn list_folders(&self, dir: &Path) -> anyhow::Result<FolderListing> {
         let dir = self.clamp_to_output(dir);
         let mut folders = Vec::new();
@@ -192,14 +253,17 @@ impl Session {
                 if name.eq_ignore_ascii_case(STATE_DIR) {
                     continue;
                 }
+                if self.ignores.is_ignored(&path) {
+                    continue;
+                }
                 folders.push(FolderEntry {
                     // Recursive subtree total so a parent holding only subfolders
                     // still shows its true descendant media count instead of (0).
                     // `subfolder_count` stays immediate â€” it only drives a
                     // "has children" indicator. The deeper walk's cost is borne on
                     // navigation (on-demand, debounced on the frontend).
-                    media_count: count_media_recursive(&path),
-                    subfolder_count: count_subfolders(&path),
+                    media_count: count_media_recursive(&path, &self.ignores),
+                    subfolder_count: count_subfolders(&path, &self.ignores),
                     path: path.to_string_lossy().into_owned(),
                     name,
                 });
@@ -417,13 +481,14 @@ impl Session {
     }
 
     /// Recursively fuzzy-search every folder under the output root (skipping the
-    /// `.comfysort` dir). Returns the top matches sorted by score desc then name
-    /// asc, capped at 50. An empty query returns an empty vec.
+    /// `.comfysort` dir and every ignored folder). Returns the top matches sorted
+    /// by score desc then name asc, capped at 50. An empty query returns an
+    /// empty vec.
     pub fn search_folders(&self, query: &str) -> Vec<FolderEntry> {
         if query.trim().is_empty() {
             return Vec::new();
         }
-        let mut scored = search::walk(&self.output, STATE_DIR, query);
+        let mut scored = search::walk(&self.output, STATE_DIR, query, &self.ignores);
         scored.sort_by(|a, b| {
             b.score
                 .cmp(&a.score)
@@ -439,7 +504,7 @@ impl Session {
                     .unwrap_or_else(|| s.rel.clone());
                 FolderEntry {
                     media_count: count_media(&s.path),
-                    subfolder_count: count_subfolders(&s.path),
+                    subfolder_count: count_subfolders(&s.path, &self.ignores),
                     path: s.path.to_string_lossy().into_owned(),
                     name,
                 }
@@ -677,8 +742,10 @@ impl Session {
     }
 
     /// The immediate child directories of the output root (scanned top-level
-    /// folders), excluding the reserved state dir. Used to decide whether an
-    /// unbound destination is a real folder or only existed because of a bind.
+    /// folders), excluding the reserved state dir and any ignored folder. Used to
+    /// decide whether an unbound destination is a real folder or only existed
+    /// because of a bind — an ignored folder counts as the latter, so clearing its
+    /// hotkey drops the row instead of leaving a target you can't navigate to.
     fn scanned_top_level(&self) -> Vec<PathBuf> {
         let mut out = Vec::new();
         if let Ok(entries) = std::fs::read_dir(&self.output) {
@@ -692,7 +759,7 @@ impl Session {
                     .file_name()
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                if name.eq_ignore_ascii_case(STATE_DIR) {
+                if name.eq_ignore_ascii_case(STATE_DIR) || self.ignores.is_ignored(&path) {
                     continue;
                 }
                 out.push(path);
@@ -770,8 +837,9 @@ impl Session {
     }
 }
 
-/// Count immediate child directories (excluding the reserved state dir).
-fn count_subfolders(path: &Path) -> usize {
+/// Count immediate child directories (excluding the reserved state dir and any
+/// ignored folder, so the "has children" arrow matches what the Navigator lists).
+fn count_subfolders(path: &Path, ignores: &IgnoreSet) -> usize {
     std::fs::read_dir(path)
         .map(|entries| {
             entries
@@ -784,6 +852,7 @@ fn count_subfolders(path: &Path) -> usize {
                             .file_name()
                             .to_string_lossy()
                             .eq_ignore_ascii_case(STATE_DIR)
+                        && !ignores.is_ignored(&e.path())
                 })
                 .count()
         })
@@ -819,7 +888,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false, &[]).unwrap();
         assert_eq!(count_of(&session, &keep), 0);
 
         // Poison `other`'s in-memory count with a sentinel. If the op path did a
@@ -863,7 +932,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false, &[]).unwrap();
         session.move_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -882,7 +951,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false, &[]).unwrap();
         session.copy_item(&src, &keep).unwrap();
         assert_eq!(count_of(&session, &keep), 1);
 
@@ -900,7 +969,7 @@ mod tests {
         let src = input.join("a.jpg");
         fs::write(&src, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false, &[]).unwrap();
         let trash = trash_dir(&output);
         assert_eq!(count_of(&session, &trash), 0);
 
@@ -920,7 +989,7 @@ mod tests {
         fs::write(&a, b"img").unwrap();
         fs::write(&b, b"img").unwrap();
 
-        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false).unwrap();
+        let (mut session, _view) = Session::open(input.to_string_lossy().into_owned(), output.clone(), false, &[]).unwrap();
         let trash = trash_dir(&output);
         session.trash_item(&a).unwrap();
         session.trash_item(&b).unwrap();
@@ -933,5 +1002,145 @@ mod tests {
         // The trash directory itself remains; only its contents are gone.
         let remaining = fs::read_dir(&trash).map(|e| e.count()).unwrap_or(0);
         assert_eq!(remaining, 0, "trash directory emptied");
+    }
+
+    // ---- Ignored folders ---------------------------------------------------
+
+    /// An output root holding `keep/` (1 image) and `_raw/nested/` (2 images).
+    fn ignore_fixture(dir: &Path) -> (PathBuf, PathBuf) {
+        let input = dir.join("inbox");
+        let output = dir.join("out");
+        fs::create_dir_all(&input).unwrap();
+        fs::create_dir_all(output.join("keep")).unwrap();
+        fs::create_dir_all(output.join("_raw").join("nested")).unwrap();
+        fs::write(output.join("keep").join("a.jpg"), b"img").unwrap();
+        fs::write(output.join("_raw").join("b.jpg"), b"img").unwrap();
+        fs::write(output.join("_raw").join("nested").join("c.jpg"), b"img").unwrap();
+        (input, output)
+    }
+
+    fn open_with(input: &Path, output: &Path, ignored: &[&str]) -> Session {
+        let ignored: Vec<String> = ignored.iter().map(|s| (*s).to_owned()).collect();
+        Session::open(input.to_string_lossy().into_owned(), output.to_path_buf(), false, &ignored)
+            .unwrap()
+            .0
+    }
+
+    fn listed_names(session: &Session, dir: &Path) -> Vec<String> {
+        session.list_folders(dir).unwrap().folders.into_iter().map(|f| f.name).collect()
+    }
+
+    fn total_listed_media(session: &Session, dir: &Path) -> usize {
+        session.list_folders(dir).unwrap().folders.iter().map(|f| f.media_count).sum()
+    }
+
+    fn target_labels(session: &Session) -> Vec<String> {
+        session.destinations.iter().map(|d| d.label.clone()).collect()
+    }
+
+    #[test]
+    fn ignored_folder_is_hidden_from_navigator_search_and_targets() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+        let session = open_with(&input, &output, &["_raw"]);
+
+        assert_eq!(listed_names(&session, &output), vec!["keep"]);
+        let labels = target_labels(&session);
+        assert!(!labels.contains(&"_raw".to_owned()), "{labels:?}");
+        assert!(
+            session.search_folders("raw").is_empty(),
+            "fuzzy search must not surface an ignored folder"
+        );
+        // Its nested folder is unreachable too - the walk never descends past it.
+        assert!(session.search_folders("nested").is_empty());
+    }
+
+    #[test]
+    fn ignored_subtree_is_left_out_of_media_counts() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+
+        let visible = open_with(&input, &output, &[]);
+        assert_eq!(
+            total_listed_media(&visible, &output),
+            3,
+            "keep/a.jpg + _raw/b.jpg + _raw/nested/c.jpg"
+        );
+
+        let ignored = open_with(&input, &output, &["_raw"]);
+        assert_eq!(
+            total_listed_media(&ignored, &output),
+            1,
+            "only keep/a.jpg is still counted"
+        );
+    }
+
+    #[test]
+    fn absolute_path_rule_ignores_only_that_folder() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+        // A second `_raw` elsewhere in the tree must survive a path rule aimed at
+        // the top-level one (a bare-name rule would take both).
+        fs::create_dir_all(output.join("keep").join("_raw")).unwrap();
+        let rule = output.join("_raw").to_string_lossy().into_owned();
+        let session = open_with(&input, &output, &[&rule]);
+
+        assert_eq!(listed_names(&session, &output), vec!["keep"]);
+        assert_eq!(
+            listed_names(&session, &output.join("keep")),
+            vec!["_raw"],
+            "the nested _raw is a different path and stays visible"
+        );
+    }
+
+    #[test]
+    fn setting_ignores_live_hides_then_restores_the_folder() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+        let mut session = open_with(&input, &output, &[]);
+        assert!(target_labels(&session).contains(&"_raw".to_owned()));
+
+        let after = session.set_ignored_folders(&["_raw".to_owned()]);
+        assert!(!after.iter().any(|d| d.label == "_raw"));
+        assert_eq!(listed_names(&session, &output), vec!["keep"]);
+
+        // Un-ignoring re-scans, so the folder comes back as a sort target.
+        let restored = session.set_ignored_folders(&[]);
+        assert!(restored.iter().any(|d| d.label == "_raw"));
+        assert!(listed_names(&session, &output).contains(&"_raw".to_owned()));
+    }
+
+    #[test]
+    fn ignoring_keeps_a_bound_folder_as_a_target() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+        let mut session = open_with(&input, &output, &[]);
+        session.bind_folder(&output.join("_raw"), '3').unwrap();
+
+        let after = session.set_ignored_folders(&["_raw".to_owned()]);
+        let bound = after
+            .iter()
+            .find(|d| d.hotkey.as_deref() == Some("3"))
+            .expect("an explicit hotkey bind survives being ignored");
+        assert_eq!(Path::new(&bound.path), output.join("_raw"));
+        // ...but it is still gone from the Navigator.
+        assert_eq!(listed_names(&session, &output), vec!["keep"]);
+    }
+
+    #[test]
+    fn set_ignored_folders_preserves_the_trash_and_archive_slots() {
+        let dir = tempdir().unwrap();
+        let (input, output) = ignore_fixture(dir.path());
+        let mut session = open_with(&input, &output, &[]);
+
+        let after = session.set_ignored_folders(&["_raw".to_owned()]);
+        assert!(
+            after.iter().any(|d| d.is_trash && d.hotkey.as_deref() == Some("0")),
+            "trash keeps slot 0"
+        );
+        assert!(
+            after.iter().any(|d| d.hotkey.as_deref() == Some("=")),
+            "the managed archive keeps slot ="
+        );
     }
 }

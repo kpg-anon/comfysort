@@ -107,8 +107,9 @@ pub fn open_session(
     input: String,
     output: String,
     recursive: bool,
+    ignored: Vec<String>,
 ) -> CmdResult<SessionView> {
-    let (session, view) = Session::open(input, PathBuf::from(output), recursive)
+    let (session, view) = Session::open(input, PathBuf::from(output), recursive, &ignored)
         .map_err(|e| e.to_string())?;
     *state.session.lock().map_err(|_| "session lock poisoned")? = Some(session);
     Ok(view)
@@ -340,6 +341,21 @@ pub fn is_portable() -> bool {
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("config.toml").exists()))
         .unwrap_or(false)
+}
+
+/// Apply the ignored-folder rules to the live session, so the Navigator, the
+/// folder search, the sort-target list, and media counts all drop (or regain)
+/// those folders without reopening the session. Returns the refreshed
+/// destinations, or `None` when no session is open — the frontend leaves its list
+/// alone in that case. Persisting the list is the frontend's job via
+/// `set_settings`.
+#[tauri::command]
+pub fn set_ignored_folders(
+    state: State<'_, AppState>,
+    ignored: Vec<String>,
+) -> CmdResult<Option<Vec<DestinationDto>>> {
+    let mut guard = state.session.lock().map_err(|_| "session lock poisoned")?;
+    Ok(guard.as_mut().map(|s| s.set_ignored_folders(&ignored)))
 }
 
 /// Apply the recursive-inbox flag to the live session (if one is open), so the

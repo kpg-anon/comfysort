@@ -248,6 +248,10 @@
       <button onclick={() => session.startRename(session.navCtx!.folder)}>
         <span class="nf">{I.edit}</span> Rename…
       </button>
+      <button onclick={() => session.ignoreCtxFolder()}>
+        <span class="nf">{I.eyeSlash}</span> Ignore this folder
+      </button>
+      <div class="ctx-sep"></div>
       <button class="danger" onclick={() => session.deleteCtxFolder()}>
         <span class="nf">{I.trash}</span> Delete to trash…
       </button>
@@ -362,6 +366,8 @@
     font-size: 12.5px; text-align: left;
   }
   .navctx button:hover { background: var(--bg-panel-alt); color: var(--text-primary); }
+  /* separates the reversible entries from the destructive one */
+  .ctx-sep { height: 1px; background: var(--border-muted); margin: 4px; }
   .navctx .nf { color: var(--purple); font-size: 12px; width: 14px; text-align: center; }
   .navctx button.danger .nf { color: var(--red); }
   .navctx button.danger:hover { color: var(--red); }

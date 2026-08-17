@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-08-17
+
+### Added
+- **Ignored folders** — hide folders you never sort into. Right-click a folder in the Navigator → **Ignore this folder** and it leaves the Navigator listing and the fuzzy search, stops being offered as a sort target, and stops counting toward its parent's media total. Nothing on disk is touched; it is purely a view filter over the destination tree.
+- **Hand-editable rules.** The list persists to `config.toml` as `ignoredFolders`. An entry containing a path separator is an absolute path and ignores that folder *and its whole subtree*; an entry without one is a folder name matched at any depth (e.g. `.thumbnails`). Matching is case- and separator-insensitive.
+- **Settings → Ignored folders** lists every rule with a one-click un-ignore, and documents both entry forms. Un-ignoring restores the folder — and its sort target — immediately, without reopening the session.
+
+### Notes
+- A folder you have explicitly bound to a hotkey **stays** a sort target while ignored — it just leaves the Navigator. The bind is treated as the stronger, more explicit choice.
+- Ignoring applies to the destination tree only. The inbox scan is a separate root and is unaffected.
+
 ## [0.5.1] — 2026-06-14
 
 ### Changed
@@ -162,7 +173,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.2
+[0.5.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.1
+[0.5.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.0
 [0.4.7]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.7
 [0.4.6]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.6
 [0.4.5]: https://github.com/kpg-anon/comfysort/releases/tag/v0.4.5

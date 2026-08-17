@@ -24,6 +24,7 @@ export const I = {
   warn: "", // nf-fa-exclamation_triangle
   refresh: "", // nf-fa-refresh
   eye: "", // nf-fa-eye
+  eyeSlash: "", // nf-fa-eye_slash (ignored folder)
   history: "", // nf-fa-history
   edit: "", // nf-fa-pencil_square_o (rename)
   keyboard: "", // nf-fa-keyboard

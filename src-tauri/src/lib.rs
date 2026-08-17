@@ -43,6 +43,7 @@ pub fn run() {
             commands::set_settings,
             commands::set_collision_policy,
             commands::set_recursive_inbox,
+            commands::set_ignored_folders,
             commands::is_portable,
         ])
         .run(tauri::generate_context!())

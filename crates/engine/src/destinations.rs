@@ -6,12 +6,17 @@
 //! regardless of hotkey. Trash always binds to `0`.
 
 use crate::domain::{DestinationDto, MediaKind, STATE_DIR, media_kind};
+use crate::ignore::IgnoreSet;
 use std::path::Path;
 
 /// Scan the output root's immediate child directories as destinations.
-/// The reserved `.comfysort` state dir is excluded. A `.trash`/`trash` folder
-/// (if present at the top level) is surfaced and bound to `0`.
-pub fn scan_destinations(output_root: &Path) -> std::io::Result<Vec<DestinationDto>> {
+/// The reserved `.comfysort` state dir is excluded, as is anything matching
+/// `ignores`. A `.trash`/`trash` folder (if present at the top level) is
+/// surfaced and bound to `0`.
+pub fn scan_destinations(
+    output_root: &Path,
+    ignores: &IgnoreSet,
+) -> std::io::Result<Vec<DestinationDto>> {
     let mut normal = Vec::new();
     let mut trash = None;
 
@@ -31,6 +36,11 @@ pub fn scan_destinations(output_root: &Path) -> std::io::Result<Vec<DestinationD
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         if label.eq_ignore_ascii_case(STATE_DIR) {
+            continue;
+        }
+        // An ignored folder is not offered as a sort target. An explicit hotkey
+        // bind still wins - the session re-applies those on top of this scan.
+        if ignores.is_ignored(&path) {
             continue;
         }
         let is_trash = label == ".trash" || label.eq_ignore_ascii_case("trash");
@@ -93,8 +103,10 @@ pub fn count_media(path: &Path) -> usize {
 /// only subfolders still shows its true descendant total instead of `(0)`.
 ///
 /// This walks the *entire* subtree (one `read_dir` per directory, `file_type()`
-/// for the dir/file bit — no extra stat). The reserved `.comfysort` state dir is
-/// skipped. Symlinked directories are never recursed into: `file_type().is_dir()`
+/// for the dir/file bit — no extra stat). The reserved `.comfysort` state dir and
+/// every folder matching `ignores` are skipped, so a parent's count reflects only
+/// what the Navigator will actually show. Symlinked directories are never
+/// recursed into: `file_type().is_dir()`
 /// is `false` for a symlink, so the walk only descends into real directories,
 /// which both avoids following links and rules out symlink-based cycles. The walk
 /// is iterative (explicit stack), so a very deep tree can't blow the call stack.
@@ -102,7 +114,7 @@ pub fn count_media(path: &Path) -> usize {
 /// Unlike [`count_media`] and the per-op destination bumps (which stay cheap and
 /// immediate), this cost is borne only on navigation — an on-demand, frontend-
 /// debounced action — so the deeper walk is acceptable there.
-pub fn count_media_recursive(path: &Path) -> usize {
+pub fn count_media_recursive(path: &Path, ignores: &IgnoreSet) -> usize {
     let mut total = 0usize;
     let mut stack = vec![path.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -126,7 +138,11 @@ pub fn count_media_recursive(path: &Path) -> usize {
                 {
                     continue;
                 }
-                stack.push(entry.path());
+                let child = entry.path();
+                if ignores.is_ignored(&child) {
+                    continue;
+                }
+                stack.push(child);
             } else if ft.is_file() && media_kind(&entry.path()) != MediaKind::Other {
                 total += 1;
             }
@@ -162,7 +178,7 @@ mod tests {
 
         assert_eq!(count_media(&parent), 0, "no immediate media in parent");
         assert_eq!(
-            count_media_recursive(&parent),
+            count_media_recursive(&parent, &IgnoreSet::default()),
             2,
             "recursive total counts a/1.jpg and b/2.png, skipping note.txt and .comfysort"
         );
@@ -172,6 +188,42 @@ mod tests {
     fn count_media_recursive_missing_dir_is_zero() {
         let dir = tempdir().unwrap();
         let missing = dir.path().join("nope");
-        assert_eq!(count_media_recursive(&missing), 0);
+        assert_eq!(count_media_recursive(&missing, &IgnoreSet::default()), 0);
+    }
+
+    #[test]
+    fn count_media_recursive_skips_ignored_subtrees() {
+        let dir = tempdir().unwrap();
+        let parent = dir.path().join("parent");
+        let keep = parent.join("keep");
+        let raw = parent.join("_raw");
+        fs::create_dir_all(&keep).unwrap();
+        fs::create_dir_all(raw.join("deeper")).unwrap();
+        fs::write(keep.join("1.jpg"), b"img").unwrap();
+        fs::write(raw.join("2.jpg"), b"img").unwrap();
+        fs::write(raw.join("deeper").join("3.jpg"), b"img").unwrap();
+
+        assert_eq!(count_media_recursive(&parent, &IgnoreSet::default()), 3);
+        // A name rule drops the whole `_raw` subtree, nested files included.
+        let ignores = IgnoreSet::new(&["_raw".to_owned()]);
+        assert_eq!(count_media_recursive(&parent, &ignores), 1);
+    }
+
+    #[test]
+    fn scan_destinations_omits_ignored_folders() {
+        let dir = tempdir().unwrap();
+        let output = dir.path().join("out");
+        fs::create_dir_all(output.join("keep")).unwrap();
+        fs::create_dir_all(output.join("_raw")).unwrap();
+
+        let all = scan_destinations(&output, &IgnoreSet::default()).unwrap();
+        let labels: Vec<&str> = all.iter().map(|d| d.label.as_str()).collect();
+        assert!(labels.contains(&"keep") && labels.contains(&"_raw"), "{labels:?}");
+
+        let ignores = IgnoreSet::new(&[output.join("_raw").to_string_lossy().into_owned()]);
+        let filtered = scan_destinations(&output, &ignores).unwrap();
+        let labels: Vec<&str> = filtered.iter().map(|d| d.label.as_str()).collect();
+        assert!(labels.contains(&"keep"), "{labels:?}");
+        assert!(!labels.contains(&"_raw"), "ignored folder is not a target: {labels:?}");
     }
 }

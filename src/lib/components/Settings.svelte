@@ -144,6 +144,39 @@
         </section>
 
         <section>
+          <h3>Ignored folders</h3>
+          <p class="note">
+            Hidden from the Navigator and folder search, left out of the sort-target scan,
+            and not counted in a parent's media total. Right-click a folder in the Navigator
+            to add one — nothing on disk is touched.
+          </p>
+          {#if settings.ignoredFolders.length === 0}
+            <p class="subnote">Nothing is ignored.</p>
+          {:else}
+            <ul class="ignored">
+              <!-- keyed by index: a hand-edited config.toml may repeat an entry,
+                   and a duplicate key is a runtime error in a keyed each -->
+              {#each settings.ignoredFolders as entry, i (i)}
+                <li>
+                  <span class="nf">{I.eyeSlash}</span>
+                  <span class="ipath" title={entry}>{entry}</span>
+                  <button
+                    class="pathx nf"
+                    title="Stop ignoring this folder"
+                    aria-label="Stop ignoring {entry}"
+                    onclick={() => session.unignoreFolder(entry)}>{I.close}</button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          <p class="subnote">
+            * In <code>config.toml</code>, <code>ignoredFolders</code> takes an absolute path
+            (that folder and everything under it) or a bare folder name such as
+            <code>.thumbnails</code>, which matches at any depth.
+          </p>
+        </section>
+
+        <section>
           <h3>Inbox defaults</h3>
           <p class="note">Applied when a session opens — you can still change them live with s / ^r / f.</p>
           {@render selectRow("Sort field", "Initial column the inbox sorts by.", settings.defaultSortField, "defaultSortField",
@@ -307,6 +340,20 @@
     border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; font-size: 12px; font-weight: 600;
   }
   .danger:hover { filter: brightness(1.08); }
+
+  /* ignored-folder list */
+  .ignored { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ignored li {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: var(--bg-chip);
+    border-radius: var(--radius-sm); padding: 5px 6px 5px 9px;
+  }
+  .ignored .nf { flex: none; color: var(--text-muted); font-size: 12px; }
+  .ipath {
+    flex: 1; min-width: 0; color: var(--text-secondary);
+    font-family: var(--mono); font-size: 11.5px;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
 
   /* default-folder picker rows */
   .pathctl { display: flex; align-items: center; gap: 6px; flex: none; max-width: 230px; }

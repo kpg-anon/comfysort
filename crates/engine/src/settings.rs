@@ -38,6 +38,13 @@ pub struct Settings {
     /// Walk every subfolder of the inbox folder(s) instead of just the top level.
     #[serde(default)]
     pub recursive_inbox: bool,
+    /// Folders to hide from the Navigator, the folder search, the sort-target
+    /// scan, and recursive media counts. Each entry is either an absolute path
+    /// (that folder and its subtree) or a bare folder name (matched at any
+    /// depth); see `crate::ignore::IgnoreSet`. Applies to the destination tree
+    /// only — the inbox scan is a different root and is unaffected.
+    #[serde(default)]
+    pub ignored_folders: Vec<String>,
     #[serde(default = "default_theme")]
     pub theme: String,
     /// Optional default inbox/destination. When both are set, the app opens
@@ -88,6 +95,7 @@ impl Default for Settings {
             video_muted: true,
             auto_update_check: true,
             recursive_inbox: false,
+            ignored_folders: Vec::new(),
             theme: default_theme(),
             default_input: String::new(),
             default_output: String::new(),
@@ -157,6 +165,7 @@ mod tests {
             video_muted: false,
             auto_update_check: false,
             recursive_inbox: true,
+            ignored_folders: vec!["D:/out/_raw".to_owned(), ".thumbnails".to_owned()],
             theme: "nord".to_owned(),
             default_input: "C:/in".to_owned(),
             default_output: "C:/out".to_owned(),
@@ -179,6 +188,18 @@ mod tests {
         assert_eq!(loaded.collision_policy, CollisionPolicy::Skip);
         assert_eq!(loaded.default_sort_field, "mod");
         assert!(loaded.video_autoplay);
+        assert!(loaded.ignored_folders.is_empty());
+    }
+
+    #[test]
+    fn hand_written_ignored_folders_load() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        // The array as a user would hand-edit it, in a file that sets nothing else.
+        std::fs::write(&path, b"ignoredFolders = [\"D:/sorted/_raw\", \".thumbnails\"]\n").unwrap();
+        let loaded = load(&path);
+        assert_eq!(loaded.ignored_folders, vec!["D:/sorted/_raw", ".thumbnails"]);
+        assert_eq!(loaded.theme, "comfy-dark", "other fields still default");
     }
 
     #[test]

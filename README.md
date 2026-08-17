@@ -10,7 +10,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.5.1-c287ff?style=for-the-badge" alt="Version 0.5.1">
+  <img src="https://img.shields.io/badge/version-0.5.2-c287ff?style=for-the-badge" alt="Version 0.5.2">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-engine-CE412B?style=for-the-badge&logo=rust&logoColor=white" alt="Rust engine">
@@ -39,7 +39,7 @@ Pick an **inbox** and a **destination root**, preview the current file, press <k
 ## 🎛️ Features
 
 - **Triage fast** — native full-quality image & video previews; hotkey move/copy/trash; multiselect for batch ops; merge multiple inbox folders into one queue; virtualized for 25k+ files.
-- **Organize** — folder **Navigator** with type-to-fuzzy-search, recursive media counts, and create/rename/delete; a **sort-target editor** that binds any folder (even outside the root) to any key.
+- **Organize** — folder **Navigator** with type-to-fuzzy-search, recursive media counts, and create/rename/delete; **ignore** folders you never sort into so they leave the listing, the search, and the counts; a **sort-target editor** that binds any folder (even outside the root) to any key.
 - **Safe & reversible** — journaled operations, multi-step <kbd>Ctrl</kbd>+<kbd>U</kbd> undo, per-file revert from the **action history**, soft-delete trash, collision-safe renames, verified cross-drive moves.
 - **Comfortable** — calm dark UI with 4 theme presets, settings persisted to `config.toml`, one-click in-app updater, portable no-install build.
 
@@ -96,7 +96,22 @@ cargo test -p comfysort-engine   # engine tests (pure Rust, no webview)
 | <kbd>→</kbd> <kbd>←</kbd> | Drill into / ascend folders |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> · <kbd>F5</kbd> · <kbd>Esc</kbd> | New folder · rescan inbox · close / cancel |
 
-Everything is also clickable — sort targets, navigator rows, and a right-click context menu on inbox items.
+Everything is also clickable — sort targets, navigator rows, and right-click context menus on inbox items and Navigator folders.
+
+### Hiding folders you never sort into
+
+Right-click a Navigator folder → **Ignore this folder**. It leaves the Navigator listing and the fuzzy search, stops being offered as a sort target, and stops counting toward its parent's media total — nothing on disk is touched, and Settings → **Ignored folders** un-ignores it again.
+
+The same list is hand-editable in `config.toml`. An entry with a path separator is an absolute path and ignores that folder plus everything under it; an entry without one is a folder name matched at any depth, case-insensitively:
+
+```toml
+ignoredFolders = [
+  "D:/sorted/_raw",   # this folder and its whole subtree
+  ".thumbnails",      # any folder with this name, at any depth
+]
+```
+
+A folder you have explicitly bound to a hotkey stays a sort target even while ignored. This applies to the destination tree only — the inbox scan is a different root and is unaffected.
 
 ## 🛟 How it stays safe
 

@@ -16,6 +16,9 @@ class SettingsStore {
   videoMuted = $state(DEFAULT_SETTINGS.videoMuted);
   autoUpdateCheck = $state(DEFAULT_SETTINGS.autoUpdateCheck);
   recursiveInbox = $state(DEFAULT_SETTINGS.recursiveInbox);
+  // Copied, not aliased: DEFAULT_SETTINGS is a shared module-level object and
+  // this is the one mutable field on it.
+  ignoredFolders = $state([...DEFAULT_SETTINGS.ignoredFolders]);
   theme = $state(DEFAULT_SETTINGS.theme);
   defaultInput = $state(DEFAULT_SETTINGS.defaultInput);
   defaultOutput = $state(DEFAULT_SETTINGS.defaultOutput);
@@ -41,6 +44,7 @@ class SettingsStore {
       videoMuted: this.videoMuted,
       autoUpdateCheck: this.autoUpdateCheck,
       recursiveInbox: this.recursiveInbox,
+      ignoredFolders: [...this.ignoredFolders],
       theme: this.theme,
       defaultInput: this.defaultInput,
       defaultOutput: this.defaultOutput,
@@ -60,6 +64,8 @@ class SettingsStore {
     this.videoMuted = s.videoMuted;
     this.autoUpdateCheck = s.autoUpdateCheck;
     this.recursiveInbox = s.recursiveInbox;
+    // A config.toml written before this field existed omits it entirely.
+    this.ignoredFolders = s.ignoredFolders ?? [];
     this.theme = s.theme;
     this.defaultInput = s.defaultInput;
     this.defaultOutput = s.defaultOutput;

@@ -295,7 +295,7 @@ class SessionStore {
     this.busy = true;
     this.error = null;
     try {
-      const view = await api.openSession(input, output, recursive);
+      const view = await api.openSession(input, output, recursive, settings.ignoredFolders);
       this.input = view.input;
       this.output = view.output;
       this.allItems = view.inbox;
@@ -566,6 +566,46 @@ class SessionStore {
       // row reflects the new name.
       if (this.searching) this.refreshSearchCounts();
       this.setStatus(`Renamed to ${clean}`, "good");
+    } catch (e) {
+      this.setStatus(String(e), "bad");
+    }
+  }
+
+  // ---- Ignored folders -----------------------------------------------------
+
+  /** Hide the right-clicked Navigator folder (context-menu entry). */
+  ignoreCtxFolder() {
+    const folder = this.navCtx?.folder;
+    this.closeNavContext();
+    if (folder) void this.ignoreFolder(folder);
+  }
+
+  /** Hide a folder from the Navigator, the folder search, the sort-target scan
+   *  and media counts. Recorded in config.toml as an absolute path; nothing on
+   *  disk is touched and the folder's own contents are untouched. */
+  async ignoreFolder(folder: FolderEntry) {
+    const target = normPath(folder.path);
+    if (settings.ignoredFolders.some((e) => normPath(e) === target)) return;
+    await this.applyIgnored([...settings.ignoredFolders, folder.path]);
+    this.setStatus(`Ignoring ${folder.name} — undo it in Settings`, "info");
+  }
+
+  /** Drop one entry from the ignore list (the Settings panel's ✕ button). */
+  async unignoreFolder(entry: string) {
+    await this.applyIgnored(settings.ignoredFolders.filter((e) => e !== entry));
+    this.setStatus(`No longer ignoring ${baseName(entry)}`, "good");
+  }
+
+  /** Persist the ignore list, push it onto the live session, and re-list the
+   *  Navigator (and any open search) so the change is visible immediately.
+   *  Works with no session open — the backend returns no destinations then. */
+  private async applyIgnored(next: string[]) {
+    await settings.set("ignoredFolders", next);
+    try {
+      const destinations = await api.setIgnoredFolders(next);
+      if (destinations) this.destinations = destinations;
+      if (this.nav) await this.loadFolders(this.nav.path, true);
+      if (this.searching) await this.refreshSearchCounts();
     } catch (e) {
       this.setStatus(String(e), "bad");
     }

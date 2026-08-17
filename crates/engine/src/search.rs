@@ -4,6 +4,7 @@
 //! rewards consecutive runs and word-boundary matches so typing the start of a
 //! folder name beats the same letters scattered across a path.
 
+use crate::ignore::IgnoreSet;
 use std::path::Path;
 
 /// Per-character match reward at candidate position `i`. Consecutive matches and
@@ -83,12 +84,14 @@ pub struct ScoredFolder {
 }
 
 /// Recursively collect every folder under `root` (skipping the `.comfysort`
-/// state dir) that fuzzy-matches `query`, scored against its forward-slashed
-/// relative path. Unsorted; caller ranks and truncates.
-pub fn walk(root: &Path, state_dir: &str, query: &str) -> Vec<ScoredFolder> {
+/// state dir and anything matching `ignores`) that fuzzy-matches `query`, scored
+/// against its forward-slashed relative path. An ignored folder is neither scored
+/// nor descended into, so its whole subtree stays out of the results. Unsorted;
+/// caller ranks and truncates.
+pub fn walk(root: &Path, state_dir: &str, query: &str, ignores: &IgnoreSet) -> Vec<ScoredFolder> {
     let lowered = query.to_ascii_lowercase();
     let mut out = Vec::new();
-    collect(root, root, state_dir, &lowered, &mut out);
+    collect(root, root, state_dir, &lowered, ignores, &mut out);
     out
 }
 
@@ -97,6 +100,7 @@ fn collect(
     current: &Path,
     state_dir: &str,
     lowered_query: &str,
+    ignores: &IgnoreSet,
     out: &mut Vec<ScoredFolder>,
 ) {
     let Ok(entries) = std::fs::read_dir(current) else {
@@ -114,6 +118,9 @@ fn collect(
             continue;
         }
         let path = entry.path();
+        if ignores.is_ignored(&path) {
+            continue;
+        }
         let rel = path
             .strip_prefix(root)
             .map(|r| r.to_string_lossy().replace('\\', "/"))
@@ -125,13 +132,15 @@ fn collect(
                 path: path.clone(),
             });
         }
-        collect(root, &path, state_dir, lowered_query, out);
+        collect(root, &path, state_dir, lowered_query, ignores, out);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn fuzzy_score_orders_consecutive_matches_higher() {
@@ -155,5 +164,27 @@ mod tests {
             target > scattered,
             "ryumommy ({target}) should beat scattered ({scattered})"
         );
+    }
+
+    #[test]
+    fn walk_skips_ignored_folders_and_their_subtrees() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("archive/wonyoung")).unwrap();
+        fs::create_dir_all(root.join("groups/wonyoung")).unwrap();
+
+        let rels = |ignores: &IgnoreSet| {
+            let mut out: Vec<String> = walk(root, ".comfysort", "wonyoung", ignores)
+                .into_iter()
+                .map(|s| s.rel)
+                .collect();
+            out.sort();
+            out
+        };
+
+        assert_eq!(rels(&IgnoreSet::default()), vec!["archive/wonyoung", "groups/wonyoung"]);
+        // Ignoring `archive` also removes the match nested inside it - the walk
+        // never descends past an ignored folder.
+        assert_eq!(rels(&IgnoreSet::new(&["archive".to_owned()])), vec!["groups/wonyoung"]);
     }
 }
