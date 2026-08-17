@@ -26,7 +26,7 @@
 https://github.com/user-attachments/assets/edd501ad-748d-4aa1-8101-778ac1b5e1d1
 
 > [!NOTE]
-> **v0.5.0.** New this release: **restore your last session** from the start screen, a **recursive-scan prompt** when you add or change an inbox folder, an **empty-trash** control in Settings, right-click actions on folder **search results**, completely **redesigned confirmation dialogs** (split choice cards), and a **flash-free, flat-themed startup**.
+> **v0.5.2.** New this release: **ignored folders** — right-click any folder in the Navigator to hide it from the listing, the fuzzy search, the sort-target scan, and its parent's media count. Rules persist to `config.toml` (an absolute path, or a bare folder name matched at any depth) and Settings lists them with a one-click un-ignore. Nothing on disk is touched.
 
 ---
 
