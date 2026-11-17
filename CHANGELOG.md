@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-11-16
+
+### Changed
+- **comfysort is now 1.0.0.** The app is considered feature-complete, and this release marks the 0.5.2 feature set as stable. There are no functional changes from 0.5.2.
+- The README no longer carries a roadmap of planned features.
+
 ## [0.5.2] — 2026-08-17
 
 ### Added
@@ -173,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial Tauri v2 + SvelteKit (Svelte 5) GUI over the pure-Rust engine: three-pane workstation, native webview image/video previews, journaled move/copy/trash with multi-step session undo, and a folder navigator.
 
-[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/kpg-anon/comfysort/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/kpg-anon/comfysort/releases/tag/v1.0.0
 [0.5.2]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.2
 [0.5.1]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.1
 [0.5.0]: https://github.com/kpg-anon/comfysort/releases/tag/v0.5.0

@@ -10,7 +10,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.5.2-c287ff?style=for-the-badge" alt="Version 0.5.2">
+  <img src="https://img.shields.io/badge/version-1.0.0-c287ff?style=for-the-badge" alt="Version 1.0.0">
   <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-engine-CE412B?style=for-the-badge&logo=rust&logoColor=white" alt="Rust engine">
@@ -26,7 +26,7 @@
 https://github.com/user-attachments/assets/edd501ad-748d-4aa1-8101-778ac1b5e1d1
 
 > [!NOTE]
-> **v0.5.2.** New this release: **ignored folders** — right-click any folder in the Navigator to hide it from the listing, the fuzzy search, the sort-target scan, and its parent's media count. Rules persist to `config.toml` (an absolute path, or a bare folder name matched at any depth) and Settings lists them with a one-click un-ignore. Nothing on disk is touched.
+> **v1.0.0.** comfysort is feature-complete. This release marks the 0.5.2 feature set as stable and has no functional changes; the most recent addition is **ignored folders** — right-click any folder in the Navigator to hide it from the listing, the fuzzy search, the sort-target scan, and its parent's media count.
 
 ---
 
@@ -127,10 +127,6 @@ A folder you have explicitly bound to a hotkey stays a sort target even while ig
 **Tauri v2 + SvelteKit (Svelte 5, SPA) + TypeScript** over a **pure-Rust engine**. The engine (`crates/engine`) has no Tauri imports and is fully testable on its own; all filesystem mutation lives in its operations layer. The Tauri shell (`src-tauri`) is the only IPC bridge, and the frontend mirrors the engine DTOs through one typed wrapper — mutating commands return small deltas so a 25k-file inbox never re-serializes.
 
 Settings persist atomically to `config.toml` (theme, collision policy, confirms, defaults — set default folders and comfysort opens straight into them).
-
-## 🗺️ Roadmap
-
-Restart-safe undo via journal replay · worker queue for huge batches · breadcrumbs for the recursive inbox · self-updating portable build · richer media metadata (EXIF, codec) · backend thumbnail pipeline · macOS / Linux bundles.
 
 ## 📜 License
 
