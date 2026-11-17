@@ -1,4 +1,4 @@
-/* comfysort design tokens — ported from ../comfysort/design.md §4.
+/* comfysort design tokens — originally ported from the comfysort TUI's design.md §4.
    Dark, calm, preview-first. Centralized here; components reference vars only. */
 :root {
   /* base */

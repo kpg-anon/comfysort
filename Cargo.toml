@@ -1,4 +1,4 @@
-# Cargo workspace root for the comfysort-tauri desktop app.
+# Cargo workspace root for the comfysort desktop app.
 #
 # Two members:
 #   - crates/engine : the pure-Rust sorting engine (no Tauri deps; fully testable)
